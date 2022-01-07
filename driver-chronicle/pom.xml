@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>net.openhft.microservices.benchmark</groupId>
+        <version>0.1-SNAPSHOT</version>
+        <artifactId>parent</artifactId>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>driver-chronicle</artifactId>
+
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>net.openhft.microservices.benchmark</groupId>
+            <artifactId>driver-api</artifactId>
+            <version>${parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.openhft</groupId>
+            <artifactId>chronicle-wire</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>net.openhft</groupId>
+            <artifactId>chronicle-queue</artifactId>
+        </dependency>
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <id>queue-enterprise</id>
+
+            <repositories>
+                <repository>
+                    <id>chronicle-enterprise-snapshots</id>
+                    <name>Snapshot Repository</name>
+                    <url>https://nexus.chronicle.software/content/repositories/snapshots</url>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </repository>
+                <repository>
+                    <id>chronicle-enterprise-release</id>
+                    <url>https://nexus.chronicle.software/content/repositories/releases</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                </repository>
+            </repositories>
+
+            <dependencies>
+                <dependency>
+                    <groupId>software.chronicle</groupId>
+                    <artifactId>chronicle-queue-enterprise</artifactId>
+                </dependency>
+
+                <dependency>
+                    <groupId>software.chronicle</groupId>
+                    <artifactId>chronicle-ring</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+</project>
