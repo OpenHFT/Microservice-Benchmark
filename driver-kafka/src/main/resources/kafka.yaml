@@ -1,8 +1,5 @@
-!services.openmicro.driver.chronicle.ChronicleDriver {
-  path: /data/tmp,
-  bufferMode: None,
-#  bufferMode: Asynchronous,
-  event: !services.openmicro.driver.chronicle.ChronicleEvent {
+!services.openmicro.driver.kafka.KafkaBenchmarkDriver {
+  event: !services.openmicro.driver.kafka.KafkaEvent {
     dateTime1: 2022-01-06T11:00:00,
     dateTime2: 2022-01-06T12:00:00,
     dateTime3: 2022-01-07T11:11:11.111222333,
@@ -24,4 +21,23 @@
     value7: 1e12,
     value8: 8888.8888
   },
+  replicationFactor: 1,
+  reset: true,
+  topicConfig: {
+    min.insync.replicas: 1
+  },
+  commonConfig: {
+    bootstrap.servers: http://localhost:9092
+  },
+  producerConfig: {
+    acks: 0,
+    linger.ms: 0,
+    batch.size: 1048576
+  },
+  consumerConfig: {
+    fetch.min.bytes: 1,
+    auto.offset.reset: earliest,
+    enable.auto.commit: true,
+    max.partition.fetch.bytes: 104857600
+  }
 }

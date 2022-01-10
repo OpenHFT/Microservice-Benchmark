@@ -2,6 +2,13 @@
 
 == Run commands for Java 11+
 
+To run from command line or your IDE
+
+```
+java -cp $CLASS_PATH -Dworkload=500kps.yaml services.openmicro.framework.Benchmark chronicle.yaml
+```
+
+Additional command line parameters to turn off some warnings in Java 9+
 ```
 -Duser.timezone=UTC
 --add-exports=java.base/jdk.internal.ref=ALL-UNNAMED

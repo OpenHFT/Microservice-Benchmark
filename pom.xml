@@ -22,7 +22,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>net.openhft.microservices.benchmark</groupId>
+    <groupId>services.openmicro</groupId>
     <artifactId>parent</artifactId>
     <version>0.1-SNAPSHOT</version>
     <name>Microservices Benchmark</name>
@@ -54,6 +54,7 @@
         <module>driver-api</module>
         <module>driver-noop</module>
         <module>driver-chronicle</module>
+        <module>driver-kafka</module>
     </modules>
 
     <licenses>
