@@ -23,4 +23,8 @@ public interface Driver {
      */
     default void close() {
     }
+
+    default int warmup() {
+        return 500_000;
+    }
 }

@@ -48,7 +48,7 @@ public class KafkaBenchmarkConsumer implements Closeable {
         this.consumerTask = this.executor.submit(() -> {
             while (running) {
                 try {
-                    ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(100));
+                    ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofSeconds(100));
 
                     Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
                     for (ConsumerRecord<String, byte[]> record : records) {

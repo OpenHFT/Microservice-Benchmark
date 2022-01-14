@@ -40,7 +40,7 @@ public class Benchmark implements JLBHTask {
 
         final int runs = 5;
         JLBHOptions lth = new JLBHOptions()
-                .warmUpIterations(500_000)
+                .warmUpIterations(driver.warmup())
                 .iterations(workload.throughput * workload.duration.toSeconds() / runs)
                 .throughput(workload.throughput)
                 .accountForCoordinatedOmission(true)

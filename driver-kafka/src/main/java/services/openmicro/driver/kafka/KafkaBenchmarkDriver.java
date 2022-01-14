@@ -33,7 +33,10 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.KafkaFuture;
-import org.apache.kafka.common.serialization.*;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.LoggerFactory;
 import services.openmicro.driver.api.Driver;
 import services.openmicro.driver.api.Event;
@@ -53,14 +56,16 @@ public class KafkaBenchmarkDriver implements Driver {
 
     static final ObjectMapper jsonMapper = new ObjectMapper(new JsonFactory());
 
+    private int warmup;
     private short replicationFactor;
     private boolean reset;
     private Map<String, String> commonConfig, topicConfig, producerConfig, consumerConfig;
     private KafkaEvent event;
+    private int partitions, consumers;
 
     private EventMicroservice microservice;
-    private transient List<KafkaBenchmarkProducer> producers = Collections.synchronizedList(new ArrayList<>());
-    private transient List<Closeable> consumers = Collections.synchronizedList(new ArrayList<>());
+    private transient List<KafkaBenchmarkProducer> producerList = Collections.synchronizedList(new ArrayList<>());
+    private transient List<Closeable> consumerList = Collections.synchronizedList(new ArrayList<>());
     private transient AdminClient admin;
 
     static KafkaEvent bytesToEvent(byte[] value) throws IOException {
@@ -107,16 +112,26 @@ public class KafkaBenchmarkDriver implements Driver {
     @Override
     public Producer createProducer(Consumer<Event> eventConsumer) {
         try {
-            createTopics("one", "two");
+            String id = Long.toString(System.currentTimeMillis(), 36);
+            final String one = "one" + id;
+            final String two = "two" + id;
+            createTopics(one, two, partitions);
 
-            final KafkaBenchmarkProducer producer2 = createProducerFor("two");
+            final KafkaBenchmarkProducer producer2 = createProducerFor(two);
 
-            this.microservice = new EventMicroservice(producer2);
-            createConsumerFor("one", this.microservice);
 
-            final KafkaBenchmarkProducer producer = createProducerFor("one");
+            final KafkaBenchmarkProducer producer = createProducerFor(one);
 
-            createConsumerFor("two", eventConsumer::accept);
+            for (int i = 0; i < consumers; i++) {
+                this.microservice = new EventMicroservice(producer2);
+                createConsumerFor(one, this.microservice);
+
+                createConsumerFor(two, e -> {
+                    synchronized (eventConsumer) {
+                        eventConsumer.accept(e);
+                    }
+                });
+            }
 
             return startTimeNS -> {
                 event.sendingTimeNS(startTimeNS);
@@ -135,25 +150,25 @@ public class KafkaBenchmarkDriver implements Driver {
         KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>((Map) config);
         consumer.subscribe(Arrays.asList(topic));
         final KafkaBenchmarkConsumer consumer1 = new KafkaBenchmarkConsumer(consumer, consumerConfig, microservice);
-        consumers.add(consumer1);
+        consumerList.add(consumer1);
     }
 
     private KafkaBenchmarkProducer createProducerFor(String topic) {
         KafkaProducer<String, byte[]> kafkaProducer = new KafkaProducer<>((Map) producerConfig);
-        final KafkaBenchmarkProducer producer = new KafkaBenchmarkProducer(kafkaProducer, topic);
-        producers.add(producer);
+        final KafkaBenchmarkProducer producer = new KafkaBenchmarkProducer(kafkaProducer, topic, partitions);
+        producerList.add(producer);
         return producer;
     }
 
-    private void createTopics(String one, String two) throws ExecutionException, InterruptedException {
-        final KafkaFuture<Void> oneFuture = createTopic(one);
-        final KafkaFuture<Void> twoFuture = createTopic(two);
+    private void createTopics(String one, String two, int partitions) throws ExecutionException, InterruptedException {
+        final KafkaFuture<Void> oneFuture = createTopic(one, partitions);
+        final KafkaFuture<Void> twoFuture = createTopic(two, partitions);
         oneFuture.get();
         twoFuture.get();
     }
 
-    private KafkaFuture<Void> createTopic(String one) {
-        NewTopic newTopic = new NewTopic(one, 1, replicationFactor);
+    private KafkaFuture<Void> createTopic(String one, int partitions) {
+        NewTopic newTopic = new NewTopic(one, partitions, replicationFactor);
         newTopic.configs(topicConfig);
         final KafkaFuture<Void> oneFuture = admin.createTopics(Arrays.asList(newTopic)).all();
         return oneFuture;
@@ -166,7 +181,7 @@ public class KafkaBenchmarkDriver implements Driver {
 
     @Override
     public void close() {
-        for (KafkaBenchmarkProducer producer : producers) {
+        for (KafkaBenchmarkProducer producer : producerList) {
             try {
                 producer.close();
             } catch (Exception e) {
@@ -174,7 +189,7 @@ public class KafkaBenchmarkDriver implements Driver {
             }
         }
 
-        for (Closeable consumer : consumers) {
+        for (Closeable consumer : consumerList) {
             try {
                 consumer.close();
             } catch (IOException e) {
@@ -182,5 +197,10 @@ public class KafkaBenchmarkDriver implements Driver {
             }
         }
         admin.close();
+    }
+
+    @Override
+    public int warmup() {
+        return warmup;
     }
 }

@@ -1,2 +1,2 @@
-throughput: 50_000
-duration: PT5M
+throughput: 100_000
+duration: PT20M
