@@ -171,3 +171,21 @@ Percentile   run1         run2         run3         run4         run5      % Var
 99.9997:        38.46         8.75        58.69        24.42        80.77        84.58
 worst:         125.82       111.49        91.78        89.47      2174.98        93.95
 ```
+
+== The GC log for the run of 500 k/s messages for 5 minutes
+
+.The last GC is triggered as a part of the warmup
+```
+[0.023s][info][gc] Using G1
+[2.043s][info][gc] GC(0) Pause Young (Normal) (G1 Evacuation Pause) 48M->5M(1004M) 5.614ms
+[2.054s][info][gc] GC(1) Pause Young (Concurrent Start) (Metadata GC Threshold) 9M->6M(1004M) 3.674ms
+[2.054s][info][gc] GC(2) Concurrent Cycle
+[2.059s][info][gc] GC(2) Pause Remark 10M->10M(1004M) 0.733ms
+[2.060s][info][gc] GC(2) Pause Cleanup 10M->10M(1004M) 0.053ms
+[2.062s][info][gc] GC(2) Concurrent Cycle 7.289ms
+[4.076s][info][gc] GC(3) Pause Young (Concurrent Start) (G1 Evacuation Pause) 94M->14M(1004M) 4.463ms
+[4.076s][info][gc] GC(4) Concurrent Cycle
+[4.083s][info][gc] GC(4) Pause Remark 24M->24M(1004M) 1.191ms
+[4.084s][info][gc] GC(4) Pause Cleanup 25M->25M(1004M) 0.057ms
+[4.086s][info][gc] GC(4) Concurrent Cycle 9.823ms
+```
