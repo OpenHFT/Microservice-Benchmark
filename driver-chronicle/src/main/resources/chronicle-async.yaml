@@ -1,5 +1,5 @@
 !services.openmicro.driver.chronicle.ChronicleDriver {
-  path: /data/tmp,
+  path: .,
   bufferMode: Asynchronous,
   event: !services.openmicro.driver.chronicle.ChronicleEvent {
     dateTime1: 2022-01-06T11:00:00,

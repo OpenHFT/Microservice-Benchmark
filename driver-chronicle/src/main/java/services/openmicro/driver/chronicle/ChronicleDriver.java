@@ -63,20 +63,22 @@ public class ChronicleDriver extends SelfDescribingMarshallable implements Drive
 
     @Override
     public void init() {
-        queue2 = createQueue("two");
+        final String path = System.getProperty("path", this.path);
+        System.out.println("path: " + path);
+        queue2 = createQueue("two", path);
         eventHandler2 = queue2.acquireAppender()
                 .methodWriter(ChronicleEventHandler.class);
 
         service = new EventMicroservice(eventHandler2);
 
-        queue1 = createQueue("one");
+        queue1 = createQueue("one", path);
         eventHandler1 = queue1.acquireAppender().methodWriter(ChronicleEventHandler.class);
         reader1 = queue1.createTailer().methodReader(service);
         System.out.println("Event size in JSON: " + JSON.asString(event));
     }
 
-    private SingleChronicleQueue createQueue(String name) {
-        final File path2 = new File(this.path, name);
+    private SingleChronicleQueue createQueue(String name, String path) {
+        final File path2 = new File(path, name);
         IOTools.deleteDirWithFiles(path2);
         return ChronicleQueue.singleBuilder(path2)
                 .useSparseFiles(true)
