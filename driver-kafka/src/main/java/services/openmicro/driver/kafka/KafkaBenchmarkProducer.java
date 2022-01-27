@@ -18,6 +18,7 @@
  */
 package services.openmicro.driver.kafka;
 
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -26,13 +27,13 @@ import services.openmicro.driver.api.EventHandler;
 
 public class KafkaBenchmarkProducer implements EventHandler<KafkaEvent> {
 
-    private final KafkaProducer<String, byte[]> producer;
+    private final KafkaProducer<String, byte[]>[] producers;
     private final String topic;
     private final int partitions;
-    private int partition;
+    private int producer, partition;
 
-    public KafkaBenchmarkProducer(KafkaProducer<String, byte[]> producer, String topic, int partitions) {
-        this.producer = producer;
+    public KafkaBenchmarkProducer(KafkaProducer<String, byte[]>[] producers, String topic, int partitions) {
+        this.producers = producers;
         this.topic = topic;
         this.partitions = partitions;
     }
@@ -41,15 +42,25 @@ public class KafkaBenchmarkProducer implements EventHandler<KafkaEvent> {
     public void event(KafkaEvent event) {
         try {
             byte[] payload = KafkaBenchmarkDriver.eventToBytes(event);
-            producer.send(new ProducerRecord<>(topic, null, String.valueOf(partition), payload));
-            if (++partition >= partitions)
-                partition = 0;
+            final int producer, partition;
+            synchronized (this) {
+                producer = this.producer;
+                partition = this.partition;
+                if (++this.producer >= producers.length) {
+                    this.producer = 0;
+                    if (++this.partition >= partitions)
+                        this.partition = 0;
+                }
+            }
+
+            producers[producer].send(new ProducerRecord<>(topic, null, String.valueOf(partition), payload));
+
         } catch (Exception e) {
             throw new IORuntimeException(e);
         }
     }
 
     public void close() {
-        producer.close();
+        Closeable.closeQuietly(producers);
     }
 }

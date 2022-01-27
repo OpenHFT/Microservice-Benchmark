@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 
 public class KafkaBenchmarkDriver implements Driver {
 
@@ -61,7 +62,7 @@ public class KafkaBenchmarkDriver implements Driver {
     private boolean reset;
     private Map<String, String> commonConfig, topicConfig, producerConfig, consumerConfig;
     private KafkaEvent event;
-    private int partitions, consumers;
+    private int producers = 1, partitions = 1, consumers = 1;
 
     private EventMicroservice microservice;
     private transient List<KafkaBenchmarkProducer> producerList = Collections.synchronizedList(new ArrayList<>());
@@ -154,8 +155,11 @@ public class KafkaBenchmarkDriver implements Driver {
     }
 
     private KafkaBenchmarkProducer createProducerFor(String topic) {
-        KafkaProducer<String, byte[]> kafkaProducer = new KafkaProducer<>((Map) producerConfig);
-        final KafkaBenchmarkProducer producer = new KafkaBenchmarkProducer(kafkaProducer, topic, partitions);
+        KafkaProducer<String, byte[]>[] kafkaProducers =
+                IntStream.range(0, producers)
+                        .mapToObj(i -> new KafkaProducer<>((Map) producerConfig))
+                        .toArray(KafkaProducer[]::new);
+        final KafkaBenchmarkProducer producer = new KafkaBenchmarkProducer(kafkaProducers, topic, partitions);
         producerList.add(producer);
         return producer;
     }
