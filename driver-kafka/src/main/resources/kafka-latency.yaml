@@ -43,7 +43,7 @@
     value7: 1e12,
     value8: 8888.8888
   },
-  producers: 10,
-  partitions: 20,
-  consumers: 2
+  producers: 4,
+  partitions: 1,
+  consumers: 1
 }
