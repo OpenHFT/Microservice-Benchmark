@@ -1,0 +1,19 @@
+= Skeleton Chronicle
+
+This is a minimalist implementation of Chronicle for the purposes of an open source benchmark. It does what is essential for the benchmark only and is not suitable for production.
+
+== Skeleton system
+
+This implementation only
+
+ - supports pre-configured client to server and server to server connections.
+ - simplest connection implementation which isn't desiged to be either low latency or to scale
+ - assumes everything restarts from the start. Not practical for large restarts.
+ - adding nodes to the cluster and fail over are manual
+
+== Chronicle Queue Enterprise
+
+This is a comparison with the commercial offering
+ - TBD
+
+=== Benchmarking Chronicle Queue Enterprise

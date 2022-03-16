@@ -13,8 +13,8 @@
     <artifactId>driver-kafka</artifactId>
 
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
         <jackson.version>2.13.1</jackson.version>
     </properties>
 

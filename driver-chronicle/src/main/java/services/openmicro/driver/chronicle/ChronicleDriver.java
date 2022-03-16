@@ -30,6 +30,7 @@ import java.util.function.Consumer;
 
 import static net.openhft.chronicle.wire.WireType.JSON;
 
+@UsedViaReflection
 public class ChronicleDriver extends SelfDescribingMarshallable implements Driver {
     // overlap is 1/4 of the total ring buffer size
     static final double BUFFER_TO_OVERLAP_RATIO = 1.0 / 4.0;

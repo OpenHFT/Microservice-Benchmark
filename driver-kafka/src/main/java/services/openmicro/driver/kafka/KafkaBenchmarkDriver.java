@@ -157,8 +157,8 @@ public class KafkaBenchmarkDriver implements Driver {
     private KafkaBenchmarkProducer createProducerFor(String topic) {
         KafkaProducer<String, byte[]>[] kafkaProducers =
                 IntStream.range(0, producers)
-                        .mapToObj(i -> new KafkaProducer<>((Map) producerConfig))
-                        .toArray(KafkaProducer[]::new);
+                        .mapToObj(i -> new KafkaProducer<>((Map<String, Object>)(Map) producerConfig))
+                        .toArray(i -> (KafkaProducer<String, byte[]>[]) new KafkaProducer[i]);
         final KafkaBenchmarkProducer producer = new KafkaBenchmarkProducer(kafkaProducers, topic, partitions);
         producerList.add(producer);
         return producer;

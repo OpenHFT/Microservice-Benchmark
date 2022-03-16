@@ -41,7 +41,7 @@ public class Benchmark implements JLBHTask {
         final int runs = 5;
         JLBHOptions lth = new JLBHOptions()
                 .warmUpIterations(driver.warmup())
-                .iterations(workload.throughput * workload.duration.toSeconds() / runs)
+                .iterations(workload.throughput * workload.duration.getSeconds() / runs)
                 .throughput(workload.throughput)
                 .accountForCoordinatedOmission(true)
                 // disable as otherwise single GC event skews results heavily
