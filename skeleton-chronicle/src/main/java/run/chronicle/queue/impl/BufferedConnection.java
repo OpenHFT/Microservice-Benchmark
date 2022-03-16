@@ -21,8 +21,13 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
     private final Pauser pauser;
     private final WireExchanger exchanger = new WireExchanger();
     private final ExecutorService bgWriter;
+    private final int lingerNs;
 
     public BufferedConnection(SimpleConnection connection, Pauser pauser) {
+        this(connection, pauser, 10);
+    }
+
+    public BufferedConnection(SimpleConnection connection, Pauser pauser, int lingerUs) {
         this.connection = connection;
         this.pauser = pauser;
         final ThreadFactory factory = isBusy(pauser)
@@ -30,6 +35,7 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
                 : new NamedThreadFactory("writer", true);
         bgWriter = Executors.newSingleThreadExecutor(factory);
         bgWriter.submit(this::bgWrite);
+        lingerNs = lingerUs * 1000;
     }
 
     // TODO Need a better test
@@ -41,6 +47,7 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
     private void bgWrite() {
         try {
             while (!isClosing()) {
+                long start = System.nanoTime();
                 connection.checkConnected();
                 final Wire wire = exchanger.acquireConsumer();
                 if (wire.bytes().isEmpty()) {
@@ -48,7 +55,12 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
                     continue;
                 }
                 pauser.reset();
+//                long size = wire.bytes().readRemaining();
                 connection.flushOut(wire);
+
+                while (System.nanoTime() < start + lingerNs) {
+                    pauser.pause();
+                }
             }
         } catch (Throwable t) {
             if (!isClosing())

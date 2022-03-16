@@ -30,7 +30,7 @@ interface Echoed {
 }
 
 public class PerfChronicleServerMain implements JLBHTask {
-    static final int THROUGHPUT = Integer.getInteger("throughput", 250_000);
+    static final int THROUGHPUT = Integer.getInteger("throughput", 100_000);
     static final int ITERATIONS = Integer.getInteger("iterations", THROUGHPUT * 30);
     static final int SIZE = Integer.getInteger("size", 256);
     private Data data;
