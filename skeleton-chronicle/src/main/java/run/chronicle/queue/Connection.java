@@ -8,7 +8,7 @@ import run.chronicle.queue.impl.BufferedConnection;
 import run.chronicle.queue.impl.SimpleConnection;
 
 public interface Connection extends Closeable, MarshallableOut, MarshallableIn {
-    static Connection createFor(SessionCfg session, Marshallable headerOut) {
+    static Connection createFor(ConnectionCfg session, Marshallable headerOut) {
         SimpleConnection simpleConnection = new SimpleConnection(session, headerOut);
         Connection connection = session.buffered()
                 ? new BufferedConnection(simpleConnection, session.pauser().get())
@@ -17,7 +17,7 @@ public interface Connection extends Closeable, MarshallableOut, MarshallableIn {
         return connection;
     }
 
-    SessionCfg sessionCfg();
+    ConnectionCfg sessionCfg();
 
     Marshallable headerOut();
 

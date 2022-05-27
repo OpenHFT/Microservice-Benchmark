@@ -6,14 +6,14 @@ import net.openhft.chronicle.wire.SelfDescribingMarshallable;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
-public class SessionCfg extends SelfDescribingMarshallable {
+public class ConnectionCfg extends SelfDescribingMarshallable {
     private boolean initiator;
     private boolean buffered;
     private PauserMode pauser = PauserMode.yielding;
     private String hostname;
     private int port;
 
-    public SessionCfg initiator(boolean initiator) {
+    public ConnectionCfg initiator(boolean initiator) {
         this.initiator = initiator;
         return this;
     }
@@ -26,7 +26,7 @@ public class SessionCfg extends SelfDescribingMarshallable {
         return hostname;
     }
 
-    public SessionCfg hostname(String hostname) {
+    public ConnectionCfg hostname(String hostname) {
         this.hostname = hostname;
         return this;
     }
@@ -35,7 +35,7 @@ public class SessionCfg extends SelfDescribingMarshallable {
         return port;
     }
 
-    public SessionCfg port(int port) {
+    public ConnectionCfg port(int port) {
         this.port = port;
         return this;
     }
@@ -48,7 +48,7 @@ public class SessionCfg extends SelfDescribingMarshallable {
         return buffered;
     }
 
-    public SessionCfg buffered(boolean buffered) {
+    public ConnectionCfg buffered(boolean buffered) {
         this.buffered = buffered;
         return this;
     }
@@ -57,7 +57,7 @@ public class SessionCfg extends SelfDescribingMarshallable {
         return pauser;
     }
 
-    public SessionCfg pauser(PauserMode pauser) {
+    public ConnectionCfg pauser(PauserMode pauser) {
         this.pauser = pauser;
         return this;
     }

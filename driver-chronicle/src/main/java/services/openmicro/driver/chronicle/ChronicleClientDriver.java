@@ -4,7 +4,7 @@ import net.openhft.chronicle.bytes.MethodReader;
 import net.openhft.chronicle.core.annotation.UsedViaReflection;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
 import run.chronicle.queue.Connection;
-import run.chronicle.queue.SessionCfg;
+import run.chronicle.queue.ConnectionCfg;
 import services.openmicro.driver.api.Driver;
 import services.openmicro.driver.api.Event;
 import services.openmicro.driver.api.Producer;
@@ -15,7 +15,7 @@ import static net.openhft.chronicle.wire.WireType.JSON;
 
 @UsedViaReflection
 public class ChronicleClientDriver extends SelfDescribingMarshallable implements Driver {
-    SessionCfg session;
+    ConnectionCfg session;
     ChronicleEvent event;
 
     transient MethodReader reader1;

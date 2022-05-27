@@ -37,12 +37,12 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
         try {
             ssc = ServerSocketChannel.open();
             ssc.bind(new InetSocketAddress(port));
-            SessionCfg sessionCfg = new SessionCfg().port(port);
+            ConnectionCfg connectionCfg = new ConnectionCfg().port(port);
             ExecutorService service = Executors.newCachedThreadPool(new NamedThreadFactory("connections"));
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();
                 sc.socket().setTcpNoDelay(true);
-                Connection connection = new SimpleConnection(sessionCfg, sc, h -> h);
+                Connection connection = new SimpleConnection(connectionCfg, sc, h -> h);
                 service.submit(() -> new ConnectionHandler(connection).run());
             }
         } catch (Throwable e) {

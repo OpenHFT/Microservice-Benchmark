@@ -7,7 +7,7 @@ import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.threads.PauserMode;
 import net.openhft.chronicle.wire.*;
 import run.chronicle.queue.Connection;
-import run.chronicle.queue.SessionCfg;
+import run.chronicle.queue.ConnectionCfg;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -21,7 +21,7 @@ public class SimpleConnection extends SimpleCloseable implements Connection {
     public static final String HEADER = "header";
     private static final Marshallable NO_MARSHALLABLE = new Marshallable() {
     };
-    private final SessionCfg sessionCfg;
+    private final ConnectionCfg connectionCfg;
     private final Function<Marshallable, Marshallable> responseHeaderFunction;
     private Marshallable headerOut;
     private SocketChannel sc;
@@ -29,28 +29,28 @@ public class SimpleConnection extends SimpleCloseable implements Connection {
     private DocumentContextHolder dch = new ConnectionDocumentContextHolder();
     private Marshallable headerIn;
 
-    public SimpleConnection(SessionCfg sessionCfg, Marshallable headerOut) {
-        this.sessionCfg = Objects.requireNonNull(sessionCfg);
+    public SimpleConnection(ConnectionCfg connectionCfg, Marshallable headerOut) {
+        this.connectionCfg = Objects.requireNonNull(connectionCfg);
         this.headerOut = Objects.requireNonNull(headerOut);
 
         this.responseHeaderFunction = null;
         this.sc = null;
-        assert sessionCfg.initiator();
+        assert connectionCfg.initiator();
         checkConnected();
     }
 
-    public SimpleConnection(SessionCfg sessionCfg, SocketChannel sc, Function<Marshallable, Marshallable> responseHeaderFunction) {
-        this.sessionCfg = Objects.requireNonNull(sessionCfg);
+    public SimpleConnection(ConnectionCfg connectionCfg, SocketChannel sc, Function<Marshallable, Marshallable> responseHeaderFunction) {
+        this.connectionCfg = Objects.requireNonNull(connectionCfg);
         this.responseHeaderFunction = Objects.requireNonNull(responseHeaderFunction);
         this.sc = Objects.requireNonNull(sc);
 
         this.headerOut = null;
-        assert !sessionCfg.initiator();
+        assert !connectionCfg.initiator();
     }
 
     @Override
-    public SessionCfg sessionCfg() {
-        return sessionCfg;
+    public ConnectionCfg sessionCfg() {
+        return connectionCfg;
     }
 
     private void flush() {
@@ -119,10 +119,10 @@ public class SimpleConnection extends SimpleCloseable implements Connection {
         closeQuietly(sc);
         if (isClosing())
             throw new IllegalStateException("Closed");
-        if (sessionCfg.initiator()) {
+        if (connectionCfg.initiator()) {
             try {
-                sc = SocketChannel.open(sessionCfg.remote());
-                if (sessionCfg.pauser() == PauserMode.busy)
+                sc = SocketChannel.open(connectionCfg.remote());
+                if (connectionCfg.pauser() == PauserMode.busy)
                     sc.configureBlocking(false);
                 sc.socket().setTcpNoDelay(true);
                 writeHeader();

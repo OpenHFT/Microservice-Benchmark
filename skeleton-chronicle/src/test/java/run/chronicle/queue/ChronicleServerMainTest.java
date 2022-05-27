@@ -17,8 +17,8 @@ public class ChronicleServerMainTest {
         t.setDaemon(true);
         t.start();
 
-        final SessionCfg sessionCfg = new SessionCfg().hostname("localhost").port(65432).initiator(true).buffered(true);
-        Connection client = Connection.createFor(sessionCfg, new SimpleHeader());
+        final ConnectionCfg connectionCfg = new ConnectionCfg().hostname("localhost").port(65432).initiator(true).buffered(true);
+        Connection client = Connection.createFor(connectionCfg, new SimpleHeader());
         client.close();
     }
 }

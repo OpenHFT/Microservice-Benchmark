@@ -11,7 +11,7 @@ import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.UnrecoverableTimeoutException;
 import net.openhft.chronicle.wire.Wire;
 import run.chronicle.queue.Connection;
-import run.chronicle.queue.SessionCfg;
+import run.chronicle.queue.ConnectionCfg;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -72,7 +72,7 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
     }
 
     @Override
-    public SessionCfg sessionCfg() {
+    public ConnectionCfg sessionCfg() {
         return connection.sessionCfg();
     }
 

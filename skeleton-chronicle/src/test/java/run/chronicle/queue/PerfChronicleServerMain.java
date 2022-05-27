@@ -91,7 +91,7 @@ public class PerfChronicleServerMain implements JLBHTask {
         serverThread.setDaemon(true);
         serverThread.start();
 
-        final SessionCfg session = new SessionCfg().hostname("localhost").port(65432).initiator(true).buffered(false).pauser(PauserMode.balanced);
+        final ConnectionCfg session = new ConnectionCfg().hostname("localhost").port(65432).initiator(true).buffered(false).pauser(PauserMode.balanced);
         client = Connection.createFor(session, new SimpleHeader());
         echoing = client.methodWriter(Echoing.class);
         reader = client.methodReader((Echoed) data -> {
