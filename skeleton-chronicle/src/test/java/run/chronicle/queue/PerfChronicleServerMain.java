@@ -1,5 +1,6 @@
 package run.chronicle.queue;
 
+import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.bytes.BytesIn;
 import net.openhft.chronicle.bytes.BytesOut;
 import net.openhft.chronicle.bytes.MethodId;
@@ -18,6 +19,22 @@ import net.openhft.chronicle.wire.SelfDescribingMarshallable;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.util.concurrent.locks.LockSupport;
+
+/*
+Ryzen 9 5950X with Ubuntu 21.10 run with -Dsize=256 -Dthroughput=100000 -Diterations=3000000
+-------------------------------- SUMMARY (end to end) us -------------------------------------------
+Percentile   run1         run2         run3         run4         run5      % Variation
+50.0:            6.84         6.84         6.82         6.86         6.84         0.31
+90.0:            6.92         6.94         6.92         6.94         6.92         0.15
+99.0:            7.03         7.05         7.05         7.05         7.02         0.30
+99.7:            8.10         8.15         8.07         8.24         8.34         2.13
+99.9:            9.68         9.78         9.62        10.13        10.48         5.65
+99.97:          14.19        14.35        14.19        14.90        15.06         3.90
+99.99:          15.73        16.08        15.92        16.74        16.99         4.30
+99.997:         17.18        17.70        17.31        18.40        18.59         4.70
+worst:          61.12        63.81        54.59        83.58        26.21        59.34
+----------------------------------------------------------------------------------------------------
+ */
 
 interface Echoing {
     @MethodId(1)
@@ -41,9 +58,11 @@ public class PerfChronicleServerMain implements JLBHTask {
     private volatile boolean complete;
     private int sent;
     private volatile int count;
+    private boolean warmedUp;
 
     public static void main(String[] args) {
         System.out.println("" +
+                "-Dsize=" + SIZE + " " +
                 "-Dthroughput=" + THROUGHPUT + " " +
                 "-Diterations=" + ITERATIONS);
 
@@ -72,17 +91,15 @@ public class PerfChronicleServerMain implements JLBHTask {
         serverThread.setDaemon(true);
         serverThread.start();
 
-        client = Connection.createFor(new SessionCfg().hostname("localhost").port(65432).initiator(true).buffered(true).pauser(PauserMode.busy));
+        final SessionCfg session = new SessionCfg().hostname("localhost").port(65432).initiator(true).buffered(false).pauser(PauserMode.balanced);
+        client = Connection.createFor(session, new SimpleHeader());
         echoing = client.methodWriter(Echoing.class);
-        reader = client.methodReader(new Echoed() {
-            @Override
-            public void echoed(Data data) {
-                jlbh.sample(System.nanoTime() - data.timeNS);
-                count++;
-            }
+        reader = client.methodReader((Echoed) data -> {
+            jlbh.sample(System.nanoTime() - data.timeNS);
+            count++;
         });
         readerThread = new Thread(() -> {
-            try {
+            try (AffinityLock lock = AffinityLock.acquireLock()) {
                 while (!Thread.currentThread().isInterrupted()) {
                     reader.readOne();
                 }
@@ -90,7 +107,7 @@ public class PerfChronicleServerMain implements JLBHTask {
                 if (!complete)
                     t.printStackTrace();
             }
-        });
+        }, "reader");
         readerThread.setDaemon(true);
         readerThread.start();
     }
@@ -98,15 +115,20 @@ public class PerfChronicleServerMain implements JLBHTask {
     @Override
     public void warmedUp() {
         JLBHTask.super.warmedUp();
+        warmedUp = true;
     }
 
     @Override
     public void run(long startTimeNS) {
         data.timeNS = startTimeNS;
         echoing.echo(data);
-        long lag = sent++ - count;
-        if (lag >= 50)
-            LockSupport.parkNanos(lag * 500L);
+
+        // throttling when warming up.
+        if (!warmedUp) {
+            long lag = sent++ - count;
+            if (lag >= 50)
+                LockSupport.parkNanos(lag * 500L);
+        }
     }
 
     @Override

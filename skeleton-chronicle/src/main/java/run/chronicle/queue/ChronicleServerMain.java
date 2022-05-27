@@ -6,10 +6,9 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.util.GenericReflection;
 import net.openhft.chronicle.threads.NamedThreadFactory;
-import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
-import run.chronicle.queue.impl.BufferedConnection;
+import run.chronicle.queue.impl.ClosedIORuntimeException;
 import run.chronicle.queue.impl.SimpleConnection;
 
 import java.io.IOException;
@@ -43,7 +42,7 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();
                 sc.socket().setTcpNoDelay(true);
-                Connection connection = new BufferedConnection(new SimpleConnection(sessionCfg, sc), Pauser.busy());
+                Connection connection = new SimpleConnection(sessionCfg, sc, h -> h);
                 service.submit(() -> new ConnectionHandler(connection).run());
             }
         } catch (Throwable e) {
@@ -66,7 +65,6 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
 
     class ConnectionHandler implements MicroserviceOut {
         final Connection connection;
-        Marshallable header;
         Object out;
 
         public ConnectionHandler(Connection connection) {
@@ -95,22 +93,7 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
 
         void run() {
             try {
-                ExpectsHeader expectsHeader = this::header;
-                final MethodReader reader0 = connection.methodReaderBuilder()
-                        .metaDataHandler(expectsHeader)
-                        .build(IgnoresEverything.INSTANCE);
-                while (!reader0.readOne()) {
-                    Jvm.warn().on(getClass(), "readOne == false");
-                }
-                if (header == null) {
-                    Jvm.warn().on(getClass(), "NO header");
-                    // no header
-                    return;
-                }
-                System.out.println("Server got " + header);
-
-                connection.methodWriter(true, ExpectsHeader.class)
-                        .header(new SimpleHeader());
+                System.out.println("Server got " + connection.headerIn());
 
                 final Marshallable microservice = ChronicleServerMain.this.microservice.deepCopy();
                 final MethodReader reader = connection.methodReaderBuilder()
@@ -127,6 +110,11 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
                     while (!((Closeable) microservice).isClosed()) {
                         reader.readOne();
                     }
+                } catch (ClosedIORuntimeException e) {
+                    Thread.yield();
+                    if (!((Closeable) microservice).isClosed())
+                        Jvm.debug().on(getClass(), "readOne threw " + e);
+
                 } catch (Exception e) {
                     Thread.yield();
                     if (!((Closeable) microservice).isClosed())
@@ -137,10 +125,6 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
             } finally {
                 Closeable.closeQuietly(connection);
             }
-        }
-
-        void header(Marshallable marshallable) {
-            this.header = marshallable;
         }
     }
 }

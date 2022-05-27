@@ -7,6 +7,7 @@ import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.threads.NamedThreadFactory;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
+import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.UnrecoverableTimeoutException;
 import net.openhft.chronicle.wire.Wire;
 import run.chronicle.queue.Connection;
@@ -95,5 +96,15 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
         super.performClose();
 
         Closeable.closeQuietly(connection);
+    }
+
+    @Override
+    public Marshallable headerOut() {
+        return connection.headerOut();
+    }
+
+    @Override
+    public Marshallable headerIn() {
+        return connection.headerIn();
     }
 }

@@ -1,0 +1,28 @@
+!services.openmicro.driver.chronicle.ChronicleClientDriver {
+  session: {
+    hostname: localhost,
+    port: 65500
+  },
+  event: !services.openmicro.driver.chronicle.ChronicleEvent {
+    dateTime1: 2022-01-06T11:00:00,
+    dateTime2: 2022-01-06T12:00:00,
+    dateTime3: 2022-01-07T11:11:11.111222333,
+    dateTime4: 2022-01-07T11:11:21.509977,
+    text1: "short",
+    text2: "longer",
+    text3: "a bit longer than that",
+    text4: "Sphinx of black quartz, judge my vow",
+    number1: 1,
+    number2: 12345,
+    number3: 123456789012,
+    number4: 876543210123456789,
+    value1: 0.0,
+    value2: 1.2345,
+    value3: 1000000,
+    value4: 12345678.9,
+    value5: 0.001,
+    value6: 6.0,
+    value7: 1e12,
+    value8: 8888.8888
+  },
+}
