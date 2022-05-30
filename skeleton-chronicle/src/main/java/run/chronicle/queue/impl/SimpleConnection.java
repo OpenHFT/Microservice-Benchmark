@@ -100,6 +100,8 @@ public class SimpleConnection extends SimpleCloseable implements Connection {
         try {
             read = sc.read(bb);
         } catch (IOException e) {
+            if ("An existing connection was forcibly closed by the remote host".equals(e.getMessage()))
+                throw new ClosedIORuntimeException("Closed");
             throw new IORuntimeException(e);
         }
         if (read < 0) {

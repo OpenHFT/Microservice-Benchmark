@@ -5,6 +5,7 @@ import net.openhft.chronicle.bytes.BytesIn;
 import net.openhft.chronicle.bytes.BytesOut;
 import net.openhft.chronicle.bytes.MethodId;
 import net.openhft.chronicle.bytes.MethodReader;
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.annotation.UsedViaReflection;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.IORuntimeException;
@@ -50,6 +51,7 @@ public class PerfChronicleServerMain implements JLBHTask {
     static final int THROUGHPUT = Integer.getInteger("throughput", 100_000);
     static final int ITERATIONS = Integer.getInteger("iterations", THROUGHPUT * 30);
     static final int SIZE = Integer.getInteger("size", 256);
+    static final boolean BUFFERED = Jvm.getBoolean("buffered");
     private Data data;
     private Echoing echoing;
     private MethodReader reader;
@@ -64,7 +66,8 @@ public class PerfChronicleServerMain implements JLBHTask {
         System.out.println("" +
                 "-Dsize=" + SIZE + " " +
                 "-Dthroughput=" + THROUGHPUT + " " +
-                "-Diterations=" + ITERATIONS);
+                "-Diterations=" + ITERATIONS + " " +
+                "-Dbuffered=" + BUFFERED);
 
         JLBHOptions lth = new JLBHOptions()
                 .warmUpIterations(50_000)
@@ -91,7 +94,12 @@ public class PerfChronicleServerMain implements JLBHTask {
         serverThread.setDaemon(true);
         serverThread.start();
 
-        final ConnectionCfg session = new ConnectionCfg().hostname("localhost").port(65432).initiator(true).buffered(false).pauser(PauserMode.balanced);
+        final ConnectionCfg session = new ConnectionCfg()
+                .hostname("localhost")
+                .port(65432)
+                .initiator(true)
+                .buffered(BUFFERED)
+                .pauser(PauserMode.balanced);
         client = Connection.createFor(session, new SimpleHeader());
         echoing = client.methodWriter(Echoing.class);
         reader = client.methodReader((Echoed) data -> {

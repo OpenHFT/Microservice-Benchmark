@@ -6,8 +6,10 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.util.GenericReflection;
 import net.openhft.chronicle.threads.NamedThreadFactory;
+import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
+import run.chronicle.queue.impl.BufferedConnection;
 import run.chronicle.queue.impl.ClosedIORuntimeException;
 import run.chronicle.queue.impl.SimpleConnection;
 
@@ -25,6 +27,7 @@ import static net.openhft.chronicle.core.util.GenericReflection.erase;
 public class ChronicleServerMain extends SelfDescribingMarshallable implements Closeable {
     int port;
     Marshallable microservice;
+    boolean buffered;
     transient ServerSocketChannel ssc;
     transient volatile boolean closed;
 
@@ -42,12 +45,12 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();
                 sc.socket().setTcpNoDelay(true);
-                Connection connection = new SimpleConnection(connectionCfg, sc, h -> h);
+                final SimpleConnection connection0 = new SimpleConnection(connectionCfg, sc, h -> h);
+                Connection connection = buffered ? new BufferedConnection(connection0, Pauser.balanced()) : connection0;
                 service.submit(() -> new ConnectionHandler(connection).run());
             }
         } catch (Throwable e) {
-            if (!isClosed())
-                Jvm.error().on(getClass(), e);
+            if (!isClosed()) Jvm.error().on(getClass(), e);
         } finally {
             close();
         }
@@ -96,11 +99,9 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
                 System.out.println("Server got " + connection.headerIn());
 
                 final Marshallable microservice = ChronicleServerMain.this.microservice.deepCopy();
-                final MethodReader reader = connection.methodReaderBuilder()
-                        .build(microservice);
+                final MethodReader reader = connection.methodReaderBuilder().build(microservice);
                 final Field field = Jvm.getFieldOrNull(microservice.getClass(), "out");
-                if (field == null)
-                    throw new IllegalStateException("Microservice " + microservice + " must have a field called out");
+                if (field == null) throw new IllegalStateException("Microservice " + microservice + " must have a field called out");
                 final Type moutType = field.getGenericType();
                 final Type out = GenericReflection.getReturnType(erase(moutType).getMethod("out"), moutType);
                 Class outType = (Class) out;
