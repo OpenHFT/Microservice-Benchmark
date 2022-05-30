@@ -4,7 +4,6 @@ import net.openhft.affinity.AffinityLock;
 import net.openhft.chronicle.bytes.MethodReader;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.Closeable;
-import net.openhft.chronicle.core.util.GenericReflection;
 import net.openhft.chronicle.threads.NamedThreadFactory;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.Marshallable;
@@ -15,14 +14,11 @@ import run.chronicle.queue.impl.SimpleConnection;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.reflect.Type;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import static net.openhft.chronicle.core.util.GenericReflection.erase;
 
 public class ChronicleServerMain extends SelfDescribingMarshallable implements Closeable {
     int port;
@@ -37,6 +33,7 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
     }
 
     void run() {
+        Thread.currentThread().setName("acceptor");
         try {
             ssc = ServerSocketChannel.open();
             ssc.bind(new InetSocketAddress(port));
@@ -58,6 +55,7 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
 
     @Override
     public void close() {
+        closed = true;
         Closeable.closeQuietly(ssc);
     }
 
@@ -66,32 +64,11 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
         return closed;
     }
 
-    class ConnectionHandler implements MicroserviceOut {
+    class ConnectionHandler {
         final Connection connection;
-        Object out;
 
         public ConnectionHandler(Connection connection) {
             this.connection = connection;
-        }
-
-        @Override
-        public Object out() {
-            return out;
-        }
-
-        @Override
-        public Object via(String stream) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void subscribe(String stream) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void unsubscribe(String stream) {
-            throw new UnsupportedOperationException();
         }
 
         void run() {
@@ -101,13 +78,11 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
                 final Marshallable microservice = ChronicleServerMain.this.microservice.deepCopy();
                 final MethodReader reader = connection.methodReaderBuilder().build(microservice);
                 final Field field = Jvm.getFieldOrNull(microservice.getClass(), "out");
-                if (field == null) throw new IllegalStateException("Microservice " + microservice + " must have a field called out");
-                final Type moutType = field.getGenericType();
-                final Type out = GenericReflection.getReturnType(erase(moutType).getMethod("out"), moutType);
-                Class outType = (Class) out;
-                this.out = connection.methodWriter(outType);
-                try (AffinityLock lock = AffinityLock.acquireLock()) {
-                    field.set(microservice, this);
+                if (field == null)
+                    throw new IllegalStateException("Microservice " + microservice + " must have a field called out");
+                Object out = connection.methodWriter(field.getType());
+                try (AffinityLock lock = AffinityLock.acquireCore()) {
+                    field.set(microservice, out);
                     while (!((Closeable) microservice).isClosed()) {
                         reader.readOne();
                     }

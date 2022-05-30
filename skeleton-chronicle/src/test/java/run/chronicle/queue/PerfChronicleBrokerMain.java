@@ -10,27 +10,16 @@ import net.openhft.chronicle.threads.PauserMode;
 import net.openhft.chronicle.wire.Marshallable;
 
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Function;
 
 /*
 Ryzen 9 5950X with Ubuntu 21.10 run with -Dsize=256 -Dthroughput=1000000 -Diterations=30000000 -Dbuffered
 -------------------------------- SUMMARY (end to end) us -------------------------------------------
-Percentile   run1         run2         run3         run4         run5      % Variation
-50.0:           16.93        16.99        16.99        16.99        16.99         0.00
-90.0:           19.68        19.74        19.74        19.74        19.68         0.22
-99.0:           24.42        24.61        24.22        24.10        23.97         1.75
-99.7:           25.76        25.89        25.82        25.76        25.76         0.33
-99.9:           26.46        26.66        26.66        26.66        26.66         0.00
-99.97:          27.17        27.30        27.30        27.36        27.30         0.16
-99.99:          27.62        27.74        27.68        27.74        27.68         0.15
-99.997:         28.96        88.19        28.19        28.38        28.32        58.66
-99.999:        153.86       170.75        29.02        30.05        29.47        76.50
-99.9997:       177.41       179.46        71.55        33.47        32.29        75.24
-worst:         249.09       185.09       147.71       104.06        37.82        72.19
-----------------------------------------------------------------------------------------------------
+
 
  */
 
-public class PerfChronicleServerMain implements JLBHTask {
+public class PerfChronicleBrokerMain implements JLBHTask {
     static final int THROUGHPUT = Integer.getInteger("throughput", 100_000);
     static final int ITERATIONS = Integer.getInteger("iterations", THROUGHPUT * 30);
     static final int SIZE = Integer.getInteger("size", 256);
@@ -39,7 +28,7 @@ public class PerfChronicleServerMain implements JLBHTask {
     private Echoing echoing;
     private MethodReader reader;
     private Thread readerThread;
-    private Connection client;
+    private Connection client, server;
     private volatile boolean complete;
     private int sent;
     private volatile int count;
@@ -56,12 +45,11 @@ public class PerfChronicleServerMain implements JLBHTask {
                 .warmUpIterations(50_000)
                 .iterations(ITERATIONS)
                 .throughput(THROUGHPUT)
-                .acquireLock(AffinityLock::acquireCore)
                 // disable as otherwise single GC event skews results heavily
                 .recordOSJitter(false)
                 .accountForCoordinatedOmission(true)
                 .runs(5)
-                .jlbhTask(new PerfChronicleServerMain());
+                .jlbhTask(new PerfChronicleBrokerMain());
         new JLBH(lth).start();
     }
 
@@ -70,14 +58,13 @@ public class PerfChronicleServerMain implements JLBHTask {
         this.data = new Data();
         this.data.data = new byte[SIZE - Long.BYTES];
 
-        String cfg = "" +
+        String brokerCfg = "" +
                 "port: 65432\n" +
-                "microservice: !run.chronicle.queue.EchoingMicroservice { }" +
                 "buffered: " + BUFFERED;
-        ChronicleServerMain main = Marshallable.fromString(ChronicleServerMain.class, cfg);
-        Thread serverThread = new Thread(main::run);
-        serverThread.setDaemon(true);
-        serverThread.start();
+        ChronicleBrokerMain main = Marshallable.fromString(ChronicleBrokerMain.class, brokerCfg);
+        Thread brokerThread = new Thread(main::run, "broker");
+        brokerThread.setDaemon(true);
+        brokerThread.start();
 
         final ConnectionCfg session = new ConnectionCfg()
                 .hostname("localhost")
@@ -85,7 +72,14 @@ public class PerfChronicleServerMain implements JLBHTask {
                 .initiator(true)
                 .buffered(BUFFERED)
                 .pauser(PauserMode.balanced);
-        client = Connection.createFor(session, new SimpleHeader());
+
+        server = Connection.createFor(session, new SimplePipeHandler().subscribe("echo.in").publish("echo.out"));
+        Thread serverThread = new Thread(() -> runServer(server, Echoed.class, EchoingMicroservice::new), "server");
+        serverThread.setDaemon(true);
+        serverThread.start();
+
+        client = Connection.createFor(session, new SimplePipeHandler().subscribe("echo.out").publish("echo.in"));
+
         echoing = client.methodWriter(Echoing.class);
         reader = client.methodReader((Echoed) data -> {
             jlbh.sample(System.nanoTime() - data.timeNS);
@@ -103,6 +97,17 @@ public class PerfChronicleServerMain implements JLBHTask {
         }, "reader");
         readerThread.setDaemon(true);
         readerThread.start();
+    }
+
+    private <OUT, MS> void runServer(Connection server, Class<OUT> outClass, Function<OUT, MS> serviceConstructor) {
+        final OUT out = server.methodWriter(outClass);
+        final MS ms = serviceConstructor.apply(out);
+        MethodReader reader = server.methodReader(ms);
+        try (AffinityLock lock = AffinityLock.acquireCore()) {
+            while (!server.isClosed()) {
+                reader.readOne();
+            }
+        }
     }
 
     @Override
@@ -129,5 +134,7 @@ public class PerfChronicleServerMain implements JLBHTask {
         this.complete = true;
         readerThread.interrupt();
         client.close();
+        server.close();
     }
 }
+

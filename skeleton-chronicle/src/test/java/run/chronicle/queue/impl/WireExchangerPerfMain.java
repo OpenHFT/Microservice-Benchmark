@@ -71,7 +71,7 @@ public class WireExchangerPerfMain implements JLBHTask {
     }
 
     private void run() {
-        try (AffinityLock lock = AffinityLock.acquireLock()) {
+        try (AffinityLock lock = AffinityLock.acquireCore()) {
             started = true;
             while (!Thread.currentThread().isInterrupted()) {
                 final Bytes<ByteBuffer> bytes = (Bytes<ByteBuffer>) be.acquireConsumer().bytes();

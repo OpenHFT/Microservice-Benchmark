@@ -83,7 +83,7 @@ public class WireExchangerMethodPerfMain implements JLBHTask {
     private void run() {
         int count = 0;
         ChronicleEvent event2 = new ChronicleEvent();
-        try (AffinityLock lock = AffinityLock.acquireLock()) {
+        try (AffinityLock lock = AffinityLock.acquireCore()) {
             while (!Thread.currentThread().isInterrupted()) {
                 final Wire wire = be.acquireConsumer();
                 while (!wire.isEmpty()) {

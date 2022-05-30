@@ -25,7 +25,7 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
     private final int lingerNs;
 
     public BufferedConnection(SimpleConnection connection, Pauser pauser) {
-        this(connection, pauser, 10);
+        this(connection, pauser, 8);
     }
 
     public BufferedConnection(SimpleConnection connection, Pauser pauser, int lingerUs) {
@@ -55,6 +55,7 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
                     pauser.pause();
                     continue;
                 }
+                appendBatchEnd(wire);
                 pauser.reset();
 //                long size = wire.bytes().readRemaining();
                 connection.flushOut(wire);
@@ -68,6 +69,12 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
                 Jvm.warn().on(getClass(), "bgWriter died", t);
         } finally {
             bgWriter.shutdown();
+        }
+    }
+
+    private void appendBatchEnd(Wire wire) {
+        try (final DocumentContext dc = wire.writingDocument(true)) {
+            dc.wire().write("be").nu11();
         }
     }
 

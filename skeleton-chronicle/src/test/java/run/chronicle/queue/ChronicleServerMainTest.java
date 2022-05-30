@@ -20,6 +20,7 @@ public class ChronicleServerMainTest {
         final ConnectionCfg connectionCfg = new ConnectionCfg().hostname("localhost").port(65432).initiator(true).buffered(true);
         Connection client = Connection.createFor(connectionCfg, new SimpleHeader());
         client.close();
+        main.close();
     }
 }
 
