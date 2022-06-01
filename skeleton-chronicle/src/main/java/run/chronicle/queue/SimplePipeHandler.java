@@ -1,12 +1,18 @@
 package run.chronicle.queue;
 
 
+import net.openhft.affinity.AffinityLock;
+import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.OS;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
+import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
+import net.openhft.chronicle.wire.Wires;
+import run.chronicle.queue.impl.ClosedIORuntimeException;
 
 public class SimplePipeHandler extends SelfDescribingMarshallable implements BrokerHandler {
 
@@ -36,58 +42,77 @@ public class SimplePipeHandler extends SelfDescribingMarshallable implements Bro
 
     @Override
     public void run(Marshallable context, Connection connection) {
+        Pauser pauser = Pauser.busy();//balancedUpToMillis(1);
 
-        try (ChronicleQueue subscribeQ = ChronicleQueue.single(subscribe);
-             ExcerptTailer tailer = subscribeQ.createTailer();
-             ChronicleQueue publishQ = ChronicleQueue.single(publish);
+        Thread reader = new Thread(() -> reader(pauser, connection), "reader");
+        reader.setDaemon(true);
+        reader.start();
+
+        try (AffinityLock lock = AffinityLock.acquireLock();
+             ChronicleQueue publishQ = single(publish);
              ExcerptAppender appender = publishQ.acquireAppender()) {
 
-            PipeState ps = PipeState.CONNECTION_READING;
-
             while (!connection.isClosed()) {
-                switch (ps) {
-                    case CONNECTION_READING:
-                        try (DocumentContext dc = connection.readingDocument()) {
-                            if (!dc.isPresent()) {
-                                ps = PipeState.QUEUE_READING;
-                                continue;
-                            }
-                            if (dc.isMetaData()) {
-                                // read message
-                                ps = PipeState.QUEUE_READING;
-                                continue;
-                            }
+                try (DocumentContext dc = connection.readingDocument()) {
+                    pauser.unpause();
 
-                            try (DocumentContext dc2 = appender.writingDocument()) {
-                                dc.wire().copyTo(dc2.wire());
-                            }
+                    if (!dc.isPresent()) {
+                        continue;
+                    }
+                    if (dc.isMetaData()) {
+                        // read message
+                        continue;
+                    }
 
-                            if (!buffered)
-                                ps = PipeState.QUEUE_READING;
-                        }
-                        break;
+//                    peek(dc, "I ");
+                    try (DocumentContext dc2 = appender.writingDocument()) {
+                        dc.wire().copyTo(dc2.wire());
+                    }
+                } catch (ClosedIORuntimeException e) {
+                    if (!connection.isClosed())
+                        Jvm.warn().on(getClass(), e);
+                    break;
+                }
+            }
+        } catch (ClosedIORuntimeException e) {
+            Jvm.warn().on(getClass(), e.toString());
+        }
+    }
 
-                    case QUEUE_READING:
-                        try (DocumentContext dc2 = tailer.readingDocument()) {
-                            if (!dc2.isPresent()) {
-                                ps = PipeState.CONNECTION_READING;
-                                continue;
-                            }
-                            try (DocumentContext dc3 = connection.writingDocument()) {
-                                dc2.wire().copyTo(dc3.wire());
-                            }
-                        }
-                        break;
+    private void peek(DocumentContext dc, String prefix) {
+        long pos = dc.wire().bytes().readPosition();
+        dc.wire().bytes().readSkip(-4);
+        try {
+            System.out.println(prefix + Wires.fromSizePrefixedBlobs(dc.wire()));
+        } finally {
+            dc.wire().bytes().readPosition(pos);
+        }
+    }
 
-                    default:
-                        throw new IllegalStateException("Unexpected value: " + ps);
+    private void reader(Pauser pauser, Connection connection) {
+        try (AffinityLock lock = AffinityLock.acquireLock();
+             ChronicleQueue subscribeQ = single(subscribe);
+             ExcerptTailer tailer = subscribeQ.createTailer().toStart()) {
+            while (!connection.isClosed()) {
+                try (DocumentContext dc = tailer.readingDocument()) {
+                    if (!dc.isPresent()) {
+                        pauser.pause();
+                        continue;
+                    }
+                    if (dc.isMetaData()) {
+                        continue;
+                    }
+//                    peek(dc, "O ");
+                    try (DocumentContext dc2 = connection.writingDocument()) {
+                        dc.wire().copyTo(dc2.wire());
+                    }
+                    pauser.reset();
                 }
             }
         }
     }
 
-    enum PipeState {
-        CONNECTION_READING,
-        QUEUE_READING
+    private ChronicleQueue single(String subscribe) {
+        return ChronicleQueue.singleBuilder(subscribe).blockSize(OS.isSparseFileSupported() ? 512L << 30 : 64L << 20).build();
     }
 }

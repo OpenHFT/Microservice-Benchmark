@@ -3,12 +3,12 @@ package run.chronicle.queue;
 import net.openhft.chronicle.bytes.BytesIn;
 import net.openhft.chronicle.bytes.BytesOut;
 import net.openhft.chronicle.core.io.IORuntimeException;
-import net.openhft.chronicle.wire.BytesInBinaryMarshallable;
+import net.openhft.chronicle.wire.SelfDescribingMarshallable;
 
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 
-class Data extends BytesInBinaryMarshallable {
+class Data extends SelfDescribingMarshallable {
     long timeNS;
     byte[] data;
 

@@ -2,6 +2,7 @@ package run.chronicle.queue.impl;
 
 import net.openhft.chronicle.bytes.Bytes;
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.threads.PauserMode;
@@ -11,6 +12,7 @@ import run.chronicle.queue.ConnectionCfg;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.SocketChannel;
 import java.util.Objects;
 import java.util.function.Function;
@@ -99,12 +101,18 @@ public class SimpleConnection extends SimpleCloseable implements Connection {
         int read;
         try {
             read = sc.read(bb);
+
+        } catch (AsynchronousCloseException e) {
+            close();
+            throw new ClosedIORuntimeException(e.toString());
+
         } catch (IOException e) {
             if ("An existing connection was forcibly closed by the remote host".equals(e.getMessage()))
                 throw new ClosedIORuntimeException("Closed");
             throw new IORuntimeException(e);
         }
         if (read < 0) {
+            close();
             throw new ClosedIORuntimeException("Closed");
         }
         bytes.writeSkip(read);
@@ -122,19 +130,33 @@ public class SimpleConnection extends SimpleCloseable implements Connection {
         if (isClosing())
             throw new IllegalStateException("Closed");
         if (connectionCfg.initiator()) {
-            try {
-                sc = SocketChannel.open(connectionCfg.remote());
-                if (connectionCfg.pauser() == PauserMode.busy)
-                    sc.configureBlocking(false);
-                sc.socket().setTcpNoDelay(true);
-                writeHeader();
-                readHeader();
-            } catch (IOException e) {
-                throw new IORuntimeException(e);
+            long end = System.nanoTime()
+                    + (long) (connectionCfg.connectionTimeoutSecs() * 1e9);
+            for (int delay = 1; ; delay++) {
+                try {
+                    sc = SocketChannel.open(connectionCfg.remote());
+                    if (connectionCfg.pauser() == PauserMode.busy)
+                        sc.configureBlocking(false);
+                    sc.socket().setTcpNoDelay(true);
+                    writeHeader();
+                    readHeader();
+                    break;
+
+                } catch (IOException e) {
+                    if (System.nanoTime() * 0 > end)
+                        throw new IORuntimeException(e);
+                    Jvm.pause(delay);
+                }
             }
         }
         in.clear();
         out.clear();
+    }
+
+    @Override
+    protected void performClose() {
+        super.performClose();
+        Closeable.closeQuietly(sc);
     }
 
     synchronized void acceptorRespondToHeader() {

@@ -13,6 +13,8 @@ public class ConnectionCfg extends SelfDescribingMarshallable {
     private String hostname;
     private int port;
 
+    private double connectionTimeoutSecs = 1.0;
+
     public ConnectionCfg initiator(boolean initiator) {
         this.initiator = initiator;
         return this;
@@ -59,6 +61,15 @@ public class ConnectionCfg extends SelfDescribingMarshallable {
 
     public ConnectionCfg pauser(PauserMode pauser) {
         this.pauser = pauser;
+        return this;
+    }
+
+    public double connectionTimeoutSecs() {
+        return connectionTimeoutSecs;
+    }
+
+    public ConnectionCfg connectionTimeoutSecs(double connectionTimeoutSecs) {
+        this.connectionTimeoutSecs = connectionTimeoutSecs;
         return this;
     }
 }

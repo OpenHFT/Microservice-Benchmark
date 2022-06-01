@@ -18,14 +18,20 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 
-public class ChronicleBrokerMain extends SelfDescribingMarshallable implements Runnable, Closeable {
-    transient ServerSocketChannel ssc;
+public class ChronicleBrokerMain extends SelfDescribingMarshallable implements Closeable {
     transient volatile boolean closed;
+    transient ServerSocketChannel ssc;
+    transient Thread thread;
     private int port;
     private boolean buffered;
 
     public static void main(String[] args) throws IOException {
-        ChronicleBrokerMain main = Marshallable.fromFile(ChronicleBrokerMain.class, args[0]);
+        ChronicleBrokerMain main = args.length == 0
+                ? new ChronicleBrokerMain()
+                .port(Integer.getInteger("port", 65432))
+                .buffered(Jvm.getBoolean("buffered"))
+                : Marshallable.fromFile(ChronicleBrokerMain.class, args[0]);
+        System.out.println("Starting  " + main);
         main.run();
     }
 
@@ -47,12 +53,28 @@ public class ChronicleBrokerMain extends SelfDescribingMarshallable implements R
         return this;
     }
 
-    @Override
-    public void run() {
-        Thread.currentThread().setName("acceptor");
-        try {
+    public synchronized ChronicleBrokerMain start() throws IOException {
+        if (isClosed())
+            throw new IllegalStateException("Closed");
+        bindSSC();
+        if (thread == null) {
+            thread = new Thread(this::run, "acceptor");
+            thread.setDaemon(true);
+            thread.start();
+        }
+        return this;
+    }
+
+    private void bindSSC() throws IOException {
+        if (ssc == null) {
             ssc = ServerSocketChannel.open();
             ssc.bind(new InetSocketAddress(port));
+        }
+    }
+
+    private void run() {
+        try {
+            bindSSC();
             ConnectionCfg connectionCfg = new ConnectionCfg().port(port);
             ExecutorService service = Executors.newCachedThreadPool(new NamedThreadFactory("connections"));
             while (!isClosed()) {

@@ -3,7 +3,6 @@ package run.chronicle.queue.impl;
 import net.openhft.affinity.AffinityThreadFactory;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.Closeable;
-import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.threads.NamedThreadFactory;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
@@ -17,7 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
-public class BufferedConnection extends SimpleCloseable implements Connection {
+public class BufferedConnection implements Connection, Closeable {
     private final SimpleConnection connection;
     private final Pauser pauser;
     private final WireExchanger exchanger = new WireExchanger();
@@ -99,13 +98,6 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
     }
 
     @Override
-    protected void performClose() {
-        super.performClose();
-
-        Closeable.closeQuietly(connection);
-    }
-
-    @Override
     public Marshallable headerOut() {
         return connection.headerOut();
     }
@@ -113,5 +105,20 @@ public class BufferedConnection extends SimpleCloseable implements Connection {
     @Override
     public Marshallable headerIn() {
         return connection.headerIn();
+    }
+
+    @Override
+    public boolean isClosing() {
+        return connection.isClosing();
+    }
+
+    @Override
+    public void close() {
+        connection.close();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return connection.isClosed();
     }
 }
