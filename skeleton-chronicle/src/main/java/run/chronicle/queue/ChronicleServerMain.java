@@ -42,7 +42,7 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();
                 sc.socket().setTcpNoDelay(true);
-                final SimpleConnection connection0 = new SimpleConnection(connectionCfg, sc, h -> h);
+                final SimpleConnection connection0 = new SimpleConnection(connectionCfg, sc);
                 Connection connection = buffered ? new BufferedConnection(connection0, Pauser.balanced()) : connection0;
                 service.submit(() -> new ConnectionHandler(connection).run());
             }

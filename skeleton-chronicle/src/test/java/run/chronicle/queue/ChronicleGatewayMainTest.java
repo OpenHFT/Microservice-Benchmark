@@ -17,7 +17,7 @@ interface Says {
     void say(String say);
 }
 
-public class ChronicleBrokerMainTest {
+public class ChronicleGatewayMainTest {
 
     static String waitForText(ExcerptTailer tailer, int time, TimeUnit timeUnit) {
         long end = System.nanoTime() + timeUnit.toNanos(time);
@@ -36,7 +36,7 @@ public class ChronicleBrokerMainTest {
         IOTools.deleteDirWithFiles(test_q);
         String cfg = "" +
                 "port: 65432";
-        try (ChronicleBrokerMain main = Marshallable.fromString(ChronicleBrokerMain.class, cfg).start()) {
+        try (ChronicleGatewayMain main = Marshallable.fromString(ChronicleGatewayMain.class, cfg).start()) {
 
             final ConnectionCfg connectionCfg = new ConnectionCfg().hostname("localhost").port(65432).initiator(true);
             Connection client = Connection.createFor(connectionCfg, new SimplePipeHandler().publish(test_q).subscribe(test_q));
@@ -69,7 +69,7 @@ public class ChronicleBrokerMainTest {
         final String two_qs = "two.qs";
         IOTools.deleteDirWithFiles(two_qs);
 
-        try (final ChronicleBrokerMain broker = new ChronicleBrokerMain().port(connectionCfg.port()).start();
+        try (final ChronicleGatewayMain broker = new ChronicleGatewayMain().port(connectionCfg.port()).start();
              Connection clientA = Connection.createFor(connectionCfg, new SimplePipeHandler().publish(two_qs + "/A").subscribe(two_qs + "/B"));
              Connection clientB = Connection.createFor(connectionCfg, new SimplePipeHandler().publish(two_qs + "/B").subscribe(two_qs + "/A"));
              ChronicleQueue qA = ChronicleQueue.single(two_qs + "/A");

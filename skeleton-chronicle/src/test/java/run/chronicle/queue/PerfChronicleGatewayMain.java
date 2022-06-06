@@ -58,7 +58,7 @@ Percentile   run1         run2         run3         run4         run5      % Var
 worst:        2666.50      1370.11      2658.30      2674.69      2969.60        43.77
  */
 
-public class PerfChronicleBrokerMain implements JLBHTask {
+public class PerfChronicleGatewayMain implements JLBHTask {
     static final int THROUGHPUT = Integer.getInteger("throughput", 100_000);
     static final int ITERATIONS = Integer.getInteger("iterations", THROUGHPUT * 30);
     static final int SIZE = Integer.getInteger("size", 256);
@@ -73,7 +73,7 @@ public class PerfChronicleBrokerMain implements JLBHTask {
     private int sent;
     private volatile int count;
     private boolean warmedUp;
-    private ChronicleBrokerMain main;
+    private ChronicleGatewayMain main;
 
     public static void main(String[] args) {
         System.out.println("" +
@@ -91,7 +91,7 @@ public class PerfChronicleBrokerMain implements JLBHTask {
                 .recordOSJitter(false)
                 .accountForCoordinatedOmission(true)
                 .runs(5)
-                .jlbhTask(new PerfChronicleBrokerMain());
+                .jlbhTask(new PerfChronicleGatewayMain());
         new JLBH(lth).start();
     }
 
@@ -108,7 +108,7 @@ public class PerfChronicleBrokerMain implements JLBHTask {
                     "port: 65432\n" +
                     "buffered: " + BUFFERED;
             try {
-                main = Marshallable.fromString(ChronicleBrokerMain.class, brokerCfg).start();
+                main = Marshallable.fromString(ChronicleGatewayMain.class, brokerCfg).start();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

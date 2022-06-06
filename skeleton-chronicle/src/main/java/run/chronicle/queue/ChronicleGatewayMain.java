@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 
-public class ChronicleBrokerMain extends SelfDescribingMarshallable implements Closeable {
+public class ChronicleGatewayMain extends SelfDescribingMarshallable implements Closeable {
     transient volatile boolean closed;
     transient ServerSocketChannel ssc;
     transient Thread thread;
@@ -26,11 +26,11 @@ public class ChronicleBrokerMain extends SelfDescribingMarshallable implements C
     private boolean buffered;
 
     public static void main(String[] args) throws IOException {
-        ChronicleBrokerMain main = args.length == 0
-                ? new ChronicleBrokerMain()
+        ChronicleGatewayMain main = args.length == 0
+                ? new ChronicleGatewayMain()
                 .port(Integer.getInteger("port", 65432))
                 .buffered(Jvm.getBoolean("buffered"))
-                : Marshallable.fromFile(ChronicleBrokerMain.class, args[0]);
+                : Marshallable.fromFile(ChronicleGatewayMain.class, args[0]);
         System.out.println("Starting  " + main);
         main.run();
     }
@@ -39,7 +39,7 @@ public class ChronicleBrokerMain extends SelfDescribingMarshallable implements C
         return port;
     }
 
-    public ChronicleBrokerMain port(int port) {
+    public ChronicleGatewayMain port(int port) {
         this.port = port;
         return this;
     }
@@ -48,12 +48,12 @@ public class ChronicleBrokerMain extends SelfDescribingMarshallable implements C
         return buffered;
     }
 
-    public ChronicleBrokerMain buffered(boolean buffered) {
+    public ChronicleGatewayMain buffered(boolean buffered) {
         this.buffered = buffered;
         return this;
     }
 
-    public synchronized ChronicleBrokerMain start() throws IOException {
+    public synchronized ChronicleGatewayMain start() throws IOException {
         if (isClosed())
             throw new IllegalStateException("Closed");
         bindSSC();
@@ -80,7 +80,7 @@ public class ChronicleBrokerMain extends SelfDescribingMarshallable implements C
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();
                 sc.socket().setTcpNoDelay(true);
-                final SimpleConnection connection0 = new SimpleConnection(connectionCfg, sc, h -> h);
+                final SimpleConnection connection0 = new SimpleConnection(connectionCfg, sc);
                 Connection connection = buffered ? new BufferedConnection(connection0, Pauser.balanced()) : connection0;
                 service.submit(() -> handle(connection));
             }
@@ -107,7 +107,7 @@ public class ChronicleBrokerMain extends SelfDescribingMarshallable implements C
         try {
             // get the header
             final Marshallable marshallable = connection.headerIn();
-            if (!(marshallable instanceof BrokerHandler)) {
+            if (!(marshallable instanceof GatewayHandler)) {
                 try (DocumentContext dc = connection.acquireWritingDocument(true)) {
                     dc.wire().write("error").text("The header must be a BrokerHandler");
                 }
@@ -115,7 +115,7 @@ public class ChronicleBrokerMain extends SelfDescribingMarshallable implements C
                 return;
             }
             System.out.println("Server got " + marshallable);
-            BrokerHandler bh = (BrokerHandler) marshallable;
+            GatewayHandler bh = (GatewayHandler) marshallable;
             bh.run(this, connection);
 
         } catch (Throwable t) {

@@ -2,6 +2,7 @@ package run.chronicle.queue.impl;
 
 import net.openhft.chronicle.bytes.Bytes;
 import net.openhft.chronicle.core.Jvm;
+import net.openhft.chronicle.core.Mocker;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.io.SimpleCloseable;
@@ -9,41 +10,37 @@ import net.openhft.chronicle.threads.PauserMode;
 import net.openhft.chronicle.wire.*;
 import run.chronicle.queue.Connection;
 import run.chronicle.queue.ConnectionCfg;
+import run.chronicle.queue.ConnectionHeader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.SocketChannel;
 import java.util.Objects;
-import java.util.function.Function;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
 public class SimpleConnection extends SimpleCloseable implements Connection {
     public static final String HEADER = "header";
-    private static final Marshallable NO_MARSHALLABLE = new Marshallable() {
-    };
+    private static final ConnectionHeader NO_HEADER = Mocker.ignored(ConnectionHeader.class);
     private final ConnectionCfg connectionCfg;
-    private final Function<Marshallable, Marshallable> responseHeaderFunction;
-    private Marshallable headerOut;
     private SocketChannel sc;
     private Wire in = createBuffer(), out = createBuffer();
     private DocumentContextHolder dch = new ConnectionDocumentContextHolder();
-    private Marshallable headerIn;
+    private ConnectionHeader headerIn;
+    private ConnectionHeader headerOut;
 
-    public SimpleConnection(ConnectionCfg connectionCfg, Marshallable headerOut) {
+    public SimpleConnection(ConnectionCfg connectionCfg, ConnectionHeader headerOut) {
         this.connectionCfg = Objects.requireNonNull(connectionCfg);
         this.headerOut = Objects.requireNonNull(headerOut);
 
-        this.responseHeaderFunction = null;
         this.sc = null;
         assert connectionCfg.initiator();
         checkConnected();
     }
 
-    public SimpleConnection(ConnectionCfg connectionCfg, SocketChannel sc, Function<Marshallable, Marshallable> responseHeaderFunction) {
+    public SimpleConnection(ConnectionCfg connectionCfg, SocketChannel sc) {
         this.connectionCfg = Objects.requireNonNull(connectionCfg);
-        this.responseHeaderFunction = Objects.requireNonNull(responseHeaderFunction);
         this.sc = Objects.requireNonNull(sc);
 
         this.headerOut = null;
@@ -160,9 +157,9 @@ public class SimpleConnection extends SimpleCloseable implements Connection {
     }
 
     synchronized void acceptorRespondToHeader() {
-        headerOut = NO_MARSHALLABLE;
+        headerOut = NO_HEADER;
         readHeader();
-        headerOut = responseHeaderFunction.apply(headerIn);
+        headerOut = headerIn.responseHeader();
         writeHeader();
     }
 
@@ -197,7 +194,7 @@ public class SimpleConnection extends SimpleCloseable implements Connection {
                 if (!HEADER.equals(s)) {
                     Jvm.warn().on(getClass(), "Unexpected first message type " + s);
                 }
-                headerIn = dc.wire().getValueIn().object(Marshallable.class);
+                headerIn = dc.wire().getValueIn().object(ConnectionHeader.class);
                 break;
             }
         }

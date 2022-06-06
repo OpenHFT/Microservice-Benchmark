@@ -14,13 +14,16 @@ import net.openhft.chronicle.wire.SelfDescribingMarshallable;
 import net.openhft.chronicle.wire.Wires;
 import run.chronicle.queue.impl.ClosedIORuntimeException;
 
-public class SimplePipeHandler extends SelfDescribingMarshallable implements BrokerHandler {
-
+public class SimplePipeHandler extends SelfDescribingMarshallable implements GatewayHandler {
+    private SystemContext systemContext = SystemContext.INSTANCE;
     private String publish;
-
     private String subscribe;
-
     private boolean buffered;
+
+    @Override
+    public SystemContext systemContext() {
+        return systemContext;
+    }
 
     public String publish() {
         return publish;
