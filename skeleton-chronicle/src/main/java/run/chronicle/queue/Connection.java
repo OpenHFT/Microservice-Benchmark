@@ -10,10 +10,11 @@ import run.chronicle.queue.impl.SimpleConnection;
 public interface Connection extends Closeable, MarshallableOut, MarshallableIn {
     static Connection createFor(ConnectionCfg session, ConnectionHeader headerOut) {
         SimpleConnection simpleConnection = new SimpleConnection(session, headerOut);
+        final ConnectionHeader marshallable = simpleConnection.headerIn();
+        System.out.println("Client got " + marshallable);
         Connection connection = session.buffered()
                 ? new BufferedConnection(simpleConnection, session.pauser().get())
                 : simpleConnection;
-        System.out.println("Client got " + connection.headerIn());
         return connection;
     }
 

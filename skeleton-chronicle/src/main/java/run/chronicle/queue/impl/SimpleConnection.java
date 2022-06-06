@@ -170,14 +170,14 @@ public class SimpleConnection extends SimpleCloseable implements Connection {
     }
 
     @Override
-    public Marshallable headerOut() {
+    public ConnectionHeader headerOut() {
         if (headerOut == null)
             acceptorRespondToHeader();
         return headerOut;
     }
 
     @Override
-    public Marshallable headerIn() {
+    public ConnectionHeader headerIn() {
         if (headerIn == null)
             acceptorRespondToHeader();
         return headerIn;
@@ -214,6 +214,10 @@ public class SimpleConnection extends SimpleCloseable implements Connection {
         final DocumentContext dc = out.acquireWritingDocument(metaData);
         dch.documentContext(dc);
         return dch;
+    }
+
+    public ConnectionCfg connectionCfg() {
+        return connectionCfg;
     }
 
     private class ConnectionDocumentContextHolder extends DocumentContextHolder implements WriteDocumentContext {

@@ -85,7 +85,7 @@ public class PerfChronicleServerMain implements JLBHTask {
                 .initiator(true)
                 .buffered(BUFFERED)
                 .pauser(PauserMode.balanced);
-        client = Connection.createFor(session, new SimpleHeader());
+        client = Connection.createFor(session, new SimpleHeader("client"));
         echoing = client.methodWriter(Echoing.class);
         reader = client.methodReader((Echoed) data -> {
             jlbh.sample(System.nanoTime() - data.timeNS);

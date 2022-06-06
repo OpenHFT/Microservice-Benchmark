@@ -63,7 +63,7 @@ public class PerfChronicleGatewayMain implements JLBHTask {
     static final int ITERATIONS = Integer.getInteger("iterations", THROUGHPUT * 30);
     static final int SIZE = Integer.getInteger("size", 256);
     static final boolean BUFFERED = Jvm.getBoolean("buffered");
-    static final String HOSTNAME = System.getProperty("hostname", "127.0.0.1"/*"localhost"*/);
+    static final String HOSTNAME = System.getProperty("hostname", "localhost");
     private Data data;
     private Echoing echoing;
     private MethodReader reader;
@@ -121,12 +121,12 @@ public class PerfChronicleGatewayMain implements JLBHTask {
                 .buffered(BUFFERED)
                 .pauser(PauserMode.balanced);
 
-        server = Connection.createFor(session, new SimplePipeHandler().subscribe("echo.in").publish("echo.out"));
+        server = Connection.createFor(session, new SimplePipeHandler("server").subscribe("echo.in").publish("echo.out"));
         Thread serverThread = new Thread(() -> runServer(server, Echoed.class, EchoingMicroservice::new), "server");
         serverThread.setDaemon(true);
         serverThread.start();
 
-        client = Connection.createFor(session, new SimplePipeHandler().subscribe("echo.out").publish("echo.in"));
+        client = Connection.createFor(session, new SimplePipeHandler("client").subscribe("echo.out").publish("echo.in"));
 
         echoing = client.methodWriter(Echoing.class);
         reader = client.methodReader((Echoed) data -> {

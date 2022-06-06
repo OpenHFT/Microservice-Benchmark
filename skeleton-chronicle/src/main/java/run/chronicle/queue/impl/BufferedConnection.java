@@ -11,6 +11,7 @@ import net.openhft.chronicle.wire.UnrecoverableTimeoutException;
 import net.openhft.chronicle.wire.Wire;
 import run.chronicle.queue.Connection;
 import run.chronicle.queue.ConnectionCfg;
+import run.chronicle.queue.EventPoller;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -22,6 +23,7 @@ public class BufferedConnection implements Connection, Closeable {
     private final WireExchanger exchanger = new WireExchanger();
     private final ExecutorService bgWriter;
     private final int lingerNs;
+    private volatile EventPoller eventPoller;
 
     public BufferedConnection(SimpleConnection connection, Pauser pauser) {
         this(connection, pauser, 8);
@@ -30,12 +32,23 @@ public class BufferedConnection implements Connection, Closeable {
     public BufferedConnection(SimpleConnection connection, Pauser pauser, int lingerUs) {
         this.connection = connection;
         this.pauser = pauser;
+        String desc = connection.connectionCfg().initiator() ? "init" : "accp";
+        final String writer = connection.headerIn().connectionId() + "~" + desc + "~" + "writer";
         final ThreadFactory factory = isBusy(pauser)
-                ? new AffinityThreadFactory("writer", true)
-                : new NamedThreadFactory("writer", true);
+                ? new AffinityThreadFactory(writer, true)
+                : new NamedThreadFactory(writer, true);
         bgWriter = Executors.newSingleThreadExecutor(factory);
         bgWriter.submit(this::bgWrite);
         lingerNs = lingerUs * 1000;
+    }
+
+    public EventPoller eventPoller() {
+        return eventPoller;
+    }
+
+    public BufferedConnection eventPoller(EventPoller eventPoller) {
+        this.eventPoller = eventPoller;
+        return this;
     }
 
     // TODO Need a better test
@@ -51,7 +64,10 @@ public class BufferedConnection implements Connection, Closeable {
                 connection.checkConnected();
                 final Wire wire = exchanger.acquireConsumer();
                 if (wire.bytes().isEmpty()) {
-                    pauser.pause();
+                    final EventPoller eventPoller = this.eventPoller;
+                    if (eventPoller == null || !eventPoller.onPoll(this)) {
+                        pauser.pause();
+                    }
                     continue;
                 }
                 appendBatchEnd(wire);
