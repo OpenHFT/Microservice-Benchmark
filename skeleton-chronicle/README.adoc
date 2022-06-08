@@ -6,10 +6,11 @@ This is a minimalist implementation of Chronicle for the purposes of an open sou
 
 This implementation only
 
- - supports pre-configured client to server and server to server connections.
- - simplest connection implementation which isn't desiged to be either low latency or to scale
- - assumes everything restarts from the start. Not practical for large restarts.
- - adding nodes to the cluster and fail over are manual
+- supports pre-configured client to server and server to server connections.
+- simplest channel implementation which isn't desiged to be either low latency or to scale
+- assumes everything restarts from the start.
+Not practical for large restarts.
+- adding nodes to the cluster and fail over are manual
 
 == Chronicle Queue Enterprise
 

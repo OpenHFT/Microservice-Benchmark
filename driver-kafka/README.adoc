@@ -12,7 +12,7 @@ Co-ordinated omission was accounted for. The time the message should have been s
 
 In this case, the `kafka.yaml` file was used. The key settings were:
 
-  - linger.ms=1
+- linger.ms=1
   - partitions=4
   - consumers=8
 
@@ -99,13 +99,14 @@ worst:      380108.80    117047.30    131203.07    330825.73    532152.32       
 
 === Low latency configuration
 
-In this case, the `kafka-latency.yaml` file was used. The key settings were:
+In this case, the `kafka-latency.yaml` file was used.The key settings were:
 
 - linger.ms=0
 - partitions=1
 - consumers=1
 
-This configuration wasn't used for the throughputs above as the connection would drop out. In particular, the `linger.ms=0` quickly results in a dropped connection, so the warmup was made as short as possible to avoid a dropout in warmup.
+This configuration wasn't used for the throughputs above as the channel would drop out.
+In particular, the `linger.ms=0` quickly results in a dropped channel, so the warmup was made as short as possible to avoid a dropout in warmup.
 
 All tests with -XX:+UseG1GC -Xmx1g
 

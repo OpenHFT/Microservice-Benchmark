@@ -3,8 +3,8 @@ package services.openmicro.driver.chronicle;
 import net.openhft.chronicle.bytes.MethodReader;
 import net.openhft.chronicle.core.annotation.UsedViaReflection;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
-import run.chronicle.queue.Connection;
-import run.chronicle.queue.ConnectionCfg;
+import run.chronicle.channel.api.Channel;
+import run.chronicle.channel.api.ChannelCfg;
 import services.openmicro.driver.api.Driver;
 import services.openmicro.driver.api.Event;
 import services.openmicro.driver.api.Producer;
@@ -15,7 +15,7 @@ import static net.openhft.chronicle.wire.WireType.JSON;
 
 @UsedViaReflection
 public class ChronicleClientDriver extends SelfDescribingMarshallable implements Driver {
-    ConnectionCfg session;
+    ChannelCfg session;
     ChronicleEvent event;
 
     transient MethodReader reader1;
@@ -25,11 +25,11 @@ public class ChronicleClientDriver extends SelfDescribingMarshallable implements
 
     @Override
     public void init() {
-        Connection connection = Connection.createFor(session, null /* TODO */);
+        Channel channel = Channel.createFor(session, null /* TODO */);
 
         service = new EventMicroservice(eventHandler2);
 
-        reader1 = connection.methodReader(service);
+        reader1 = channel.methodReader(service);
         System.out.println("Event size in JSON: " + JSON.asString(event));
     }
 
