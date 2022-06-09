@@ -134,7 +134,7 @@ public class SimpleChronicleChannel extends SimpleCloseable implements Chronicle
             for (int delay = 1; ; delay++) {
                 try {
                     sc = SocketChannel.open(channelCfg.remote());
-                    if (channelCfg.pauser() == PauserMode.busy)
+                    if (channelCfg.pauserMode() == PauserMode.busy)
                         sc.configureBlocking(false);
                     sc.socket().setTcpNoDelay(true);
                     writeHeader();

@@ -55,11 +55,11 @@ public class ChronicleChannelCfg extends SelfDescribingMarshallable {
         return this;
     }
 
-    public PauserMode pauser() {
+    public PauserMode pauserMode() {
         return pauser;
     }
 
-    public ChronicleChannelCfg pauser(PauserMode pauser) {
+    public ChronicleChannelCfg pauserMode(PauserMode pauser) {
         this.pauser = pauser;
         return this;
     }

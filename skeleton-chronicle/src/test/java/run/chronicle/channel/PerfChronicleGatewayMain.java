@@ -20,44 +20,31 @@ import java.util.function.Function;
 
 /*
 Ryzen 9 5950X with Ubuntu 21.10 run with
--Dhostname=127.0.0.1 -Dsize=256 -Dthroughput=100000 -Diterations=3000000
--------------------------------- SUMMARY (end to end) us -------------------------------------------
-50.0:           19.17        19.17        19.17        19.10        19.17         0.22
-90.0:           27.87        27.87        27.87        27.87        27.87         0.00
-99.0:           37.82        37.57        37.57        37.57        37.44         0.23
-99.7:           48.32        47.30        47.42        46.91        46.78         0.90
-99.9:           51.90        51.01        51.65        51.26        51.14         0.83
-99.97:          67.97        61.25        68.99        62.78        63.30         7.77
-99.99:          88.19        70.27       455.17        71.55        76.93        78.50
-99.997:        513.54        81.79      1103.87        83.33       558.08        89.28
-worst:        1103.87       149.76      1415.17       190.72      1107.97        84.92
-
--Dsize=256 -Dthroughput=200000 -Diterations=6000000 -Dbuffered=true
+-Dhostname=127.0.0.1 -Dsize=256 -Dthroughput=50000 -Diterations=1500000 -DpauseMode=balanced -Dbuffered=false
 -------------------------------- SUMMARY (end to end) us -------------------------------------------
 Percentile   run1         run2         run3         run4         run5      % Variation
-50.0:           46.53        46.66        46.78        46.78        46.78         0.18
-90.0:           56.64        56.51        56.90        56.77        56.38         0.60
-99.0:           70.02        69.76        70.02        69.76        68.99         0.98
-99.7:           77.18        77.18        77.18        77.44        76.16         1.11
-99.9:           85.63        86.91        86.40        87.68        84.10         2.76
-99.97:          94.85       109.70        96.90       349.70        94.34        64.34
-99.99:         104.06      1173.50       142.59      1992.70       111.23        91.85
-99.997:        220.42      1710.08       662.53      2748.42       592.90        70.79
-worst:         458.24      2142.21      1234.94      3543.04      1361.92        55.48
+50.0:           15.95        15.95        15.89        15.95        15.95         0.27
+90.0:           17.82        17.82        17.82        17.89        17.82         0.24
+99.0:           26.21        25.89        25.44        25.44        25.12         2.00
+99.7:           45.89        41.15        38.98        39.10        38.46         4.45
+99.9:           49.47        49.34        48.58        48.70        48.58         1.04
+99.97:          51.90        51.78        49.60        49.73        49.60         2.84
+99.99:          69.50        62.02        55.62        53.18        57.28         9.97
+worst:         906.24       335.36       333.31       129.92       376.32        55.84
 
--Dhostname=127.0.0.1 -Dsize=256 -Dthroughput=500000 -Diterations=15000000 -Dbuffered=true
+-Dhostname=127.0.0.1 -Dsize=256 -Dthroughput=500000 -Diterations=15000000 -DpauserMode=busy -Dbuffered=true
 -------------------------------- SUMMARY (end to end) us -------------------------------------------
 Percentile   run1         run2         run3         run4         run5      % Variation
-50.0:           50.75        50.75        50.88        51.01        51.14         0.50
-90.0:           62.91        62.78        62.91        63.17        63.30         0.54
-99.0:           83.84        82.30        82.56        83.58        83.84         1.23
-99.7:           97.15        92.80        93.06        95.36        95.10         1.81
-99.9:          404.99       102.78       103.81       121.22       110.98        10.68
-99.97:        1419.26       212.74       341.50      1043.46      1247.23        76.43
-99.99:        1955.84       842.75      1041.41      1824.77      2082.82        49.52
-99.997:       2338.82      1107.97      2054.14      2347.01      2478.08        45.19
-99.999:       2543.62      1259.52      2437.12      2560.00      2748.42        44.07
-worst:        2666.50      1370.11      2658.30      2674.69      2969.60        43.77
+50.0:           48.06        47.55        47.04        47.17        47.55         0.72
+90.0:           60.22        58.82        57.15        57.28        58.43         1.90
+99.0:           78.98        74.88        70.53        70.78        73.09         3.95
+99.7:           93.57        88.19        80.26        80.77        84.10         6.18
+99.9:          272.90       371.20       112.51       168.19       117.63        60.52
+99.97:        1054.72       988.16       599.04       654.34       689.15        30.22
+99.99:        1533.95      1398.78       908.29       914.43      1132.54        26.47
+99.997:       1845.25      1648.64      1120.26      1054.72      1472.51        27.29
+99.999:       2033.66      1796.10      1222.66      1132.54      1656.83        28.09
+worst:        2191.36      1951.74      1366.02      1210.37      1837.06        28.99
  */
 
 public class PerfChronicleGatewayMain implements JLBHTask {
@@ -66,6 +53,7 @@ public class PerfChronicleGatewayMain implements JLBHTask {
     static final int SIZE = Integer.getInteger("size", 256);
     static final boolean BUFFERED = Jvm.getBoolean("buffered");
     static final String HOSTNAME = System.getProperty("hostname", "localhost");
+    private static final PauserMode PAUSER_MODE = PauserMode.valueOf(System.getProperty("pauserMode", PauserMode.balanced.name()));
     private Data data;
     private Echoing echoing;
     private MethodReader reader;
@@ -83,6 +71,7 @@ public class PerfChronicleGatewayMain implements JLBHTask {
                 "-Dsize=" + SIZE + " " +
                 "-Dthroughput=" + THROUGHPUT + " " +
                 "-Diterations=" + ITERATIONS + " " +
+                "-DpauseMode=" + PAUSER_MODE + " " +
                 "-Dbuffered=" + BUFFERED);
 
         JLBHOptions lth = new JLBHOptions()
@@ -116,19 +105,19 @@ public class PerfChronicleGatewayMain implements JLBHTask {
             }
         }
 
-        final ChronicleChannelCfg session = new ChronicleChannelCfg()
+        final ChronicleChannelCfg channelCfg = new ChronicleChannelCfg()
                 .hostname(HOSTNAME)
                 .port(65432)
                 .initiator(true)
                 .buffered(BUFFERED)
-                .pauser(PauserMode.balanced);
+                .pauserMode(PAUSER_MODE);
 
-        server = ChronicleChannel.newChannel(session, new PipeHandler("server").subscribe("echo.in").publish("echo.out"));
+        server = ChronicleChannel.newChannel(channelCfg, new PipeHandler("server").subscribe("echo.in").publish("echo.out"));
         Thread serverThread = new Thread(() -> runServer(server, Echoed.class, EchoingMicroservice::new), "server");
         serverThread.setDaemon(true);
         serverThread.start();
 
-        client = ChronicleChannel.newChannel(session, new PipeHandler("client").subscribe("echo.out").publish("echo.in"));
+        client = ChronicleChannel.newChannel(channelCfg, new PipeHandler("client").subscribe("echo.out").publish("echo.in"));
 
         echoing = client.methodWriter(Echoing.class);
         reader = client.methodReader((Echoed) data -> {

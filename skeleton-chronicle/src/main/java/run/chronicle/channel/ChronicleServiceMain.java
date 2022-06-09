@@ -29,12 +29,14 @@ public class ChronicleServiceMain extends SelfDescribingMarshallable implements 
     transient ServerSocketChannel ssc;
     transient volatile boolean closed;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String... args) throws IOException {
         ChronicleServiceMain main = Marshallable.fromFile(ChronicleServiceMain.class, args[0]);
+        main.buffered = Jvm.getBoolean("buffered", main.buffered);
         main.run();
     }
 
     void run() {
+        Jvm.startup().on(getClass(), "Starting " + this);
         Thread.currentThread().setName("acceptor");
         try {
             ssc = ServerSocketChannel.open();
@@ -85,8 +87,12 @@ public class ChronicleServiceMain extends SelfDescribingMarshallable implements 
                 Object out = channel.methodWriter(field.getType());
                 try (AffinityLock lock = AffinityLock.acquireCore()) {
                     field.set(microservice, out);
+                    Pauser pauser = Pauser.balanced();
                     while (!((Closeable) microservice).isClosed()) {
-                        reader.readOne();
+                        if (reader.readOne())
+                            pauser.reset();
+                        else
+                            pauser.pause();
                     }
                 } catch (ClosedIORuntimeException e) {
                     Thread.yield();

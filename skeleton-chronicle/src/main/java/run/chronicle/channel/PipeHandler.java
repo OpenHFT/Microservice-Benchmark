@@ -83,11 +83,11 @@ public class PipeHandler extends SelfDescribingMarshallable implements ChannelHa
         ChronicleQueue subscribeQ = null;
         final ExcerptTailer tailer;
 
+        final String id = channel.headerIn().connectionId();
         if (channel instanceof BufferedChronicleChannel) {
             BufferedChronicleChannel bc = (BufferedChronicleChannel) channel;
             subscribeQ = single(subscribe);
-            final String id = channel.headerIn().connectionId();
-            tailer = subscribeQ.createTailer(id).toStart();
+            tailer = subscribeQ.createTailer(id);
             bc.eventPoller(conn -> {
                 boolean wrote = false;
                 while (copyOneMessage(conn, tailer))
@@ -95,7 +95,7 @@ public class PipeHandler extends SelfDescribingMarshallable implements ChannelHa
                 return wrote;
             });
         } else {
-            Thread tailerThread = new Thread(() -> queueTailer(pauser, channel), connectionId + "~tailer");
+            Thread tailerThread = new Thread(() -> queueTailer(id, pauser, channel), connectionId + "~tailer");
             tailerThread.setDaemon(true);
             tailerThread.start();
 
@@ -138,10 +138,10 @@ public class PipeHandler extends SelfDescribingMarshallable implements ChannelHa
         }
     }
 
-    private void queueTailer(Pauser pauser, ChronicleChannel channel) {
+    private void queueTailer(String id, Pauser pauser, ChronicleChannel channel) {
         try (AffinityLock lock = AffinityLock.acquireLock();
              ChronicleQueue subscribeQ = single(subscribe);
-             ExcerptTailer tailer = subscribeQ.createTailer().toStart()) {
+             ExcerptTailer tailer = subscribeQ.createTailer(id)) {
             while (!channel.isClosed()) {
                 if (copyOneMessage(channel, tailer))
                     pauser.reset();

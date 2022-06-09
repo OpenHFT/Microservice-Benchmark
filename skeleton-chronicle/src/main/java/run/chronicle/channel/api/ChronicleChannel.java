@@ -17,7 +17,7 @@ public interface ChronicleChannel extends Closeable, MarshallableOut, Marshallab
         final ChannelHeader marshallable = simpleConnection.headerIn();
         System.out.println("Client got " + marshallable);
         ChronicleChannel channel = session.buffered()
-                ? new BufferedChronicleChannel(simpleConnection, session.pauser().get())
+                ? new BufferedChronicleChannel(simpleConnection, session.pauserMode().get())
                 : simpleConnection;
         return channel;
     }
@@ -56,7 +56,7 @@ public interface ChronicleChannel extends Closeable, MarshallableOut, Marshallab
         final MethodReader echoingReader = methodReader(subscriptionHandler);
         return () -> {
             try {
-                Pauser pauser = channelCfg().pauser().get();
+                Pauser pauser = channelCfg().pauserMode().get();
                 while (!isClosed()) {
                     if (echoingReader.readOne())
                         pauser.reset();

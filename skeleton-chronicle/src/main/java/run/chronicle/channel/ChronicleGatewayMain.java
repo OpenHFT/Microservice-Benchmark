@@ -4,6 +4,7 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.threads.NamedThreadFactory;
 import net.openhft.chronicle.threads.Pauser;
+import net.openhft.chronicle.threads.PauserMode;
 import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.Marshallable;
 import run.chronicle.channel.api.ChannelHandler;
@@ -25,12 +26,14 @@ public class ChronicleGatewayMain extends ChronicleContext implements Closeable 
     transient ServerSocketChannel ssc;
     transient Thread thread;
     private boolean buffered;
+    private PauserMode pauserMode;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String... args) throws IOException {
         ChronicleGatewayMain main = args.length == 0
                 ? new ChronicleGatewayMain()
                 .port(Integer.getInteger("port", 65432))
                 .buffered(Jvm.getBoolean("buffered"))
+                .pauserMode(PauserMode.valueOf(System.getProperty("pauserMode", PauserMode.balanced.name())))
                 : Marshallable.fromFile(ChronicleGatewayMain.class, args[0]);
         System.out.println("Starting  " + main);
         main.run();
@@ -72,7 +75,7 @@ public class ChronicleGatewayMain extends ChronicleContext implements Closeable 
     private void run() {
         try {
             bindSSC();
-            ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().port(port());
+            ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().port(port()).pauserMode(pauserMode).buffered(buffered);
             ExecutorService service = Executors.newCachedThreadPool(new NamedThreadFactory("connections"));
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();
@@ -115,5 +118,10 @@ public class ChronicleGatewayMain extends ChronicleContext implements Closeable 
         } finally {
             Closeable.closeQuietly(channel);
         }
+    }
+
+    public ChronicleGatewayMain pauserMode(PauserMode pauserMode) {
+        this.pauserMode = pauserMode;
+        return this;
     }
 }
