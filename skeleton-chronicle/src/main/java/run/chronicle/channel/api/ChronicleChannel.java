@@ -13,6 +13,8 @@ import run.chronicle.channel.impl.TCPChronicleChannel;
 
 public interface ChronicleChannel extends Closeable, MarshallableOut, MarshallableIn {
     static ChronicleChannel newChannel(ChronicleChannelCfg session, ChannelHeader headerOut) {
+        if (session.port() <= 0)
+            throw new UnsupportedOperationException("local service not supported");
         TCPChronicleChannel simpleConnection = new TCPChronicleChannel(session, headerOut);
         final ChannelHeader marshallable = simpleConnection.headerIn();
         System.out.println("Client got " + marshallable);

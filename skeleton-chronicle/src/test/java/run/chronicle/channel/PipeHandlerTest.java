@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assume.assumeTrue;
 
 @RunWith(Parameterized.class)
 public class PipeHandlerTest {
@@ -55,6 +56,8 @@ public class PipeHandlerTest {
             String text = channel.readOne(eventType, String.class);
             assertEquals("say: Hello World",
                     eventType + ": " + text);
+        } catch (UnsupportedOperationException uos) {
+            assumeTrue(port > 0);
         }
     }
 }
