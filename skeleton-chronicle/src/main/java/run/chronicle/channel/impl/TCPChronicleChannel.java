@@ -15,6 +15,7 @@ import run.chronicle.channel.api.ChronicleChannel;
 import run.chronicle.channel.api.ChronicleChannelCfg;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.SocketChannel;
@@ -22,7 +23,7 @@ import java.util.Objects;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
-public class SimpleChronicleChannel extends SimpleCloseable implements ChronicleChannel {
+public class TCPChronicleChannel extends SimpleCloseable implements ChronicleChannel {
     public static final String HEADER = "header";
     private static final ChannelHeader NO_HEADER = Mocker.ignored(ChannelHeader.class);
     private final ChronicleChannelCfg channelCfg;
@@ -32,16 +33,18 @@ public class SimpleChronicleChannel extends SimpleCloseable implements Chronicle
     private ChannelHeader headerIn;
     private ChannelHeader headerOut;
 
-    public SimpleChronicleChannel(ChronicleChannelCfg channelCfg, ChannelHeader headerOut) {
+    public TCPChronicleChannel(ChronicleChannelCfg channelCfg, ChannelHeader headerOut) {
         this.channelCfg = Objects.requireNonNull(channelCfg);
         this.headerOut = Objects.requireNonNull(headerOut);
+        if (channelCfg.port() <= 0)
+            throw new IllegalArgumentException("Invalid port " + channelCfg.port());
 
         this.sc = null;
         assert channelCfg.initiator();
         checkConnected();
     }
 
-    public SimpleChronicleChannel(ChronicleChannelCfg channelCfg, SocketChannel sc) {
+    public TCPChronicleChannel(ChronicleChannelCfg channelCfg, SocketChannel sc) {
         this.channelCfg = Objects.requireNonNull(channelCfg);
         this.sc = Objects.requireNonNull(sc);
 
@@ -133,7 +136,8 @@ public class SimpleChronicleChannel extends SimpleCloseable implements Chronicle
                     + (long) (channelCfg.connectionTimeoutSecs() * 1e9);
             for (int delay = 1; ; delay++) {
                 try {
-                    sc = SocketChannel.open(channelCfg.remote());
+                    final SocketAddress remote = channelCfg.remote();
+                    sc = SocketChannel.open(remote);
                     if (channelCfg.pauserMode() == PauserMode.busy)
                         sc.configureBlocking(false);
                     sc.socket().setTcpNoDelay(true);

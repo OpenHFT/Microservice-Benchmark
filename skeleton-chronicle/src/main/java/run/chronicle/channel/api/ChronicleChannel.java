@@ -9,11 +9,11 @@ import net.openhft.chronicle.wire.MarshallableIn;
 import net.openhft.chronicle.wire.MarshallableOut;
 import run.chronicle.channel.impl.BufferedChronicleChannel;
 import run.chronicle.channel.impl.ClosedIORuntimeException;
-import run.chronicle.channel.impl.SimpleChronicleChannel;
+import run.chronicle.channel.impl.TCPChronicleChannel;
 
 public interface ChronicleChannel extends Closeable, MarshallableOut, MarshallableIn {
     static ChronicleChannel newChannel(ChronicleChannelCfg session, ChannelHeader headerOut) {
-        SimpleChronicleChannel simpleConnection = new SimpleChronicleChannel(session, headerOut);
+        TCPChronicleChannel simpleConnection = new TCPChronicleChannel(session, headerOut);
         final ChannelHeader marshallable = simpleConnection.headerIn();
         System.out.println("Client got " + marshallable);
         ChronicleChannel channel = session.buffered()

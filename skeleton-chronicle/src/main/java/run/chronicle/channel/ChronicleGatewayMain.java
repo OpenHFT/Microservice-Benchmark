@@ -12,7 +12,7 @@ import run.chronicle.channel.api.ChronicleChannel;
 import run.chronicle.channel.api.ChronicleChannelCfg;
 import run.chronicle.channel.api.ChronicleContext;
 import run.chronicle.channel.impl.BufferedChronicleChannel;
-import run.chronicle.channel.impl.SimpleChronicleChannel;
+import run.chronicle.channel.impl.TCPChronicleChannel;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -80,7 +80,7 @@ public class ChronicleGatewayMain extends ChronicleContext implements Closeable 
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();
                 sc.socket().setTcpNoDelay(true);
-                final SimpleChronicleChannel connection0 = new SimpleChronicleChannel(channelCfg, sc);
+                final TCPChronicleChannel connection0 = new TCPChronicleChannel(channelCfg, sc);
                 ChronicleChannel channel = buffered ? new BufferedChronicleChannel(connection0, Pauser.balanced()) : connection0;
                 service.submit(() -> handle(channel));
             }

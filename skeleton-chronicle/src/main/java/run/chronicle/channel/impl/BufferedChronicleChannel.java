@@ -18,18 +18,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 public class BufferedChronicleChannel implements ChronicleChannel, Closeable {
-    private final SimpleChronicleChannel connection;
+    private final TCPChronicleChannel connection;
     private final Pauser pauser;
     private final WireExchanger exchanger = new WireExchanger();
     private final ExecutorService bgWriter;
     private final int lingerNs;
     private volatile EventPoller eventPoller;
 
-    public BufferedChronicleChannel(SimpleChronicleChannel connection, Pauser pauser) {
+    public BufferedChronicleChannel(TCPChronicleChannel connection, Pauser pauser) {
         this(connection, pauser, 8);
     }
 
-    public BufferedChronicleChannel(SimpleChronicleChannel connection, Pauser pauser, int lingerUs) {
+    public BufferedChronicleChannel(TCPChronicleChannel connection, Pauser pauser, int lingerUs) {
         this.connection = connection;
         this.pauser = pauser;
         String desc = connection.connectionCfg().initiator() ? "init" : "accp";

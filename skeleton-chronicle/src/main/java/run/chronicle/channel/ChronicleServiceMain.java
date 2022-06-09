@@ -12,7 +12,7 @@ import run.chronicle.channel.api.ChronicleChannel;
 import run.chronicle.channel.api.ChronicleChannelCfg;
 import run.chronicle.channel.impl.BufferedChronicleChannel;
 import run.chronicle.channel.impl.ClosedIORuntimeException;
-import run.chronicle.channel.impl.SimpleChronicleChannel;
+import run.chronicle.channel.impl.TCPChronicleChannel;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -46,7 +46,7 @@ public class ChronicleServiceMain extends SelfDescribingMarshallable implements 
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();
                 sc.socket().setTcpNoDelay(true);
-                final SimpleChronicleChannel connection0 = new SimpleChronicleChannel(channelCfg, sc);
+                final TCPChronicleChannel connection0 = new TCPChronicleChannel(channelCfg, sc);
                 ChronicleChannel channel = buffered ? new BufferedChronicleChannel(connection0, Pauser.balanced()) : connection0;
                 service.submit(() -> new ConnectionHandler(channel).run());
             }

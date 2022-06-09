@@ -4,10 +4,13 @@ import net.openhft.chronicle.bytes.MethodReader;
 import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
+import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.util.WeakIdentityHashMap;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
+import run.chronicle.channel.ChronicleGatewayMain;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
@@ -29,6 +32,7 @@ public class ChronicleContext extends SelfDescribingMarshallable implements Clos
 
     private int port;
     private boolean buffered;
+    private ChronicleGatewayMain gateway;
 
     protected ChronicleContext() {
     }
@@ -71,9 +75,24 @@ public class ChronicleContext extends SelfDescribingMarshallable implements Clos
     }
 
     public ChronicleChannelSupplier newChannelSupplier(ChannelHandler handler) {
+        checkServerRunning();
+
         final ChronicleChannelSupplier connectionSupplier = new ChronicleChannelSupplier(this, handler);
-        connectionSupplier.hostname(hostname()).port(port()).buffered(buffered()).initiator(true);
+        final String hostname = hostname();
+        connectionSupplier.hostname(hostname == null ? "localhost" : hostname).port(port()).buffered(buffered()).initiator(true);
         return connectionSupplier;
+    }
+
+    private synchronized void checkServerRunning() {
+        if (hostname == null && port > 0 && gateway == null) {
+            gateway = new ChronicleGatewayMain().port(port);
+            try {
+                addCloseable(gateway);
+                gateway.start();
+            } catch (IOException e) {
+                throw new IORuntimeException(e);
+            }
+        }
     }
 
     @Override
