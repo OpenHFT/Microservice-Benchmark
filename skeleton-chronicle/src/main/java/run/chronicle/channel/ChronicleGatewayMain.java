@@ -6,12 +6,12 @@ import net.openhft.chronicle.threads.NamedThreadFactory;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.Marshallable;
-import net.openhft.chronicle.wire.SelfDescribingMarshallable;
-import run.chronicle.channel.api.Channel;
-import run.chronicle.channel.api.ChannelCfg;
 import run.chronicle.channel.api.ChannelHandler;
-import run.chronicle.channel.impl.BufferedChannel;
-import run.chronicle.channel.impl.SimpleChannel;
+import run.chronicle.channel.api.ChronicleChannel;
+import run.chronicle.channel.api.ChronicleChannelCfg;
+import run.chronicle.channel.api.ChronicleContext;
+import run.chronicle.channel.impl.BufferedChronicleChannel;
+import run.chronicle.channel.impl.SimpleChronicleChannel;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -21,11 +21,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 
-public class ChronicleGatewayMain extends SelfDescribingMarshallable implements Closeable {
-    transient volatile boolean closed;
+public class ChronicleGatewayMain extends ChronicleContext implements Closeable {
     transient ServerSocketChannel ssc;
     transient Thread thread;
-    private int port;
     private boolean buffered;
 
     public static void main(String[] args) throws IOException {
@@ -38,12 +36,8 @@ public class ChronicleGatewayMain extends SelfDescribingMarshallable implements 
         main.run();
     }
 
-    public int port() {
-        return port;
-    }
-
     public ChronicleGatewayMain port(int port) {
-        this.port = port;
+        super.port(port);
         return this;
     }
 
@@ -71,20 +65,20 @@ public class ChronicleGatewayMain extends SelfDescribingMarshallable implements 
     private void bindSSC() throws IOException {
         if (ssc == null) {
             ssc = ServerSocketChannel.open();
-            ssc.bind(new InetSocketAddress(port));
+            ssc.bind(new InetSocketAddress(port()));
         }
     }
 
     private void run() {
         try {
             bindSSC();
-            ChannelCfg channelCfg = new ChannelCfg().port(port);
+            ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().port(port());
             ExecutorService service = Executors.newCachedThreadPool(new NamedThreadFactory("connections"));
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();
                 sc.socket().setTcpNoDelay(true);
-                final SimpleChannel connection0 = new SimpleChannel(channelCfg, sc);
-                Channel channel = buffered ? new BufferedChannel(connection0, Pauser.balanced()) : connection0;
+                final SimpleChronicleChannel connection0 = new SimpleChronicleChannel(channelCfg, sc);
+                ChronicleChannel channel = buffered ? new BufferedChronicleChannel(connection0, Pauser.balanced()) : connection0;
                 service.submit(() -> handle(channel));
             }
         } catch (Throwable e) {
@@ -96,17 +90,12 @@ public class ChronicleGatewayMain extends SelfDescribingMarshallable implements 
     }
 
     @Override
-    public void close() {
-        closed = true;
+    protected void performClose() {
+        super.performClose();
         Closeable.closeQuietly(ssc);
     }
 
-    @Override
-    public boolean isClosed() {
-        return closed;
-    }
-
-    void handle(Channel channel) {
+    void handle(ChronicleChannel channel) {
         try {
             // get the header
             final Marshallable marshallable = channel.headerIn();

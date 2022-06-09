@@ -3,8 +3,8 @@ package services.openmicro.driver.chronicle;
 import net.openhft.chronicle.bytes.MethodReader;
 import net.openhft.chronicle.core.annotation.UsedViaReflection;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
-import run.chronicle.channel.api.Channel;
-import run.chronicle.channel.api.ChannelCfg;
+import run.chronicle.channel.api.ChronicleChannel;
+import run.chronicle.channel.api.ChronicleChannelCfg;
 import services.openmicro.driver.api.Driver;
 import services.openmicro.driver.api.Event;
 import services.openmicro.driver.api.Producer;
@@ -15,7 +15,7 @@ import static net.openhft.chronicle.wire.WireType.JSON;
 
 @UsedViaReflection
 public class ChronicleClientDriver extends SelfDescribingMarshallable implements Driver {
-    ChannelCfg session;
+    ChronicleChannelCfg session;
     ChronicleEvent event;
 
     transient MethodReader reader1;
@@ -25,7 +25,7 @@ public class ChronicleClientDriver extends SelfDescribingMarshallable implements
 
     @Override
     public void init() {
-        Channel channel = Channel.createFor(session, null /* TODO */);
+        ChronicleChannel channel = ChronicleChannel.newChannel(session, null /* TODO */);
 
         service = new EventMicroservice(eventHandler2);
 

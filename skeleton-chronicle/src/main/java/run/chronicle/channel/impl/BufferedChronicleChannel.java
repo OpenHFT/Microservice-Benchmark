@@ -6,30 +6,30 @@ import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.threads.NamedThreadFactory;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
-import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.UnrecoverableTimeoutException;
 import net.openhft.chronicle.wire.Wire;
-import run.chronicle.channel.api.Channel;
-import run.chronicle.channel.api.ChannelCfg;
+import run.chronicle.channel.api.ChannelHeader;
+import run.chronicle.channel.api.ChronicleChannel;
+import run.chronicle.channel.api.ChronicleChannelCfg;
 import run.chronicle.channel.api.EventPoller;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
-public class BufferedChannel implements Channel, Closeable {
-    private final SimpleChannel connection;
+public class BufferedChronicleChannel implements ChronicleChannel, Closeable {
+    private final SimpleChronicleChannel connection;
     private final Pauser pauser;
     private final WireExchanger exchanger = new WireExchanger();
     private final ExecutorService bgWriter;
     private final int lingerNs;
     private volatile EventPoller eventPoller;
 
-    public BufferedChannel(SimpleChannel connection, Pauser pauser) {
+    public BufferedChronicleChannel(SimpleChronicleChannel connection, Pauser pauser) {
         this(connection, pauser, 8);
     }
 
-    public BufferedChannel(SimpleChannel connection, Pauser pauser, int lingerUs) {
+    public BufferedChronicleChannel(SimpleChronicleChannel connection, Pauser pauser, int lingerUs) {
         this.connection = connection;
         this.pauser = pauser;
         String desc = connection.connectionCfg().initiator() ? "init" : "accp";
@@ -46,7 +46,7 @@ public class BufferedChannel implements Channel, Closeable {
         return eventPoller;
     }
 
-    public BufferedChannel eventPoller(EventPoller eventPoller) {
+    public BufferedChronicleChannel eventPoller(EventPoller eventPoller) {
         this.eventPoller = eventPoller;
         return this;
     }
@@ -94,7 +94,7 @@ public class BufferedChannel implements Channel, Closeable {
     }
 
     @Override
-    public ChannelCfg channelCfg() {
+    public ChronicleChannelCfg channelCfg() {
         return connection.channelCfg();
     }
 
@@ -114,12 +114,12 @@ public class BufferedChannel implements Channel, Closeable {
     }
 
     @Override
-    public Marshallable headerOut() {
+    public ChannelHeader headerOut() {
         return connection.headerOut();
     }
 
     @Override
-    public Marshallable headerIn() {
+    public ChannelHeader headerIn() {
         return connection.headerIn();
     }
 

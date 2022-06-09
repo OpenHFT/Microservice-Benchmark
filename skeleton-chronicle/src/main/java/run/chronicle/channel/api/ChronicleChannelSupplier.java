@@ -2,18 +2,18 @@ package run.chronicle.channel.api;
 
 import java.util.function.Supplier;
 
-public class ChannelSupplier extends ChannelCfg implements Supplier<Channel> {
+public class ChronicleChannelSupplier extends ChronicleChannelCfg implements Supplier<ChronicleChannel> {
     private final ChronicleContext context;
     private final ChannelHandler handler;
 
-    public ChannelSupplier(ChronicleContext context, ChannelHandler handler) {
+    public ChronicleChannelSupplier(ChronicleContext context, ChannelHandler handler) {
         this.context = context;
         this.handler = handler;
     }
 
     @Override
-    public Channel get() {
-        final Channel channel = Channel.createFor(this, handler);
+    public ChronicleChannel get() {
+        final ChronicleChannel channel = ChronicleChannel.newChannel(this, handler);
         context.addCloseable(channel);
         return channel;
     }

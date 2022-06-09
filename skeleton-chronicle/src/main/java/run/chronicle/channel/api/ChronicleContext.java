@@ -5,6 +5,7 @@ import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.AbstractCloseable;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.util.WeakIdentityHashMap;
+import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
 
 import java.util.Collections;
@@ -20,40 +21,38 @@ public class ChronicleContext extends SelfDescribingMarshallable implements Clos
     private AbstractCloseable closeable = new AbstractCloseable() {
         @Override
         protected void performClose() throws IllegalStateException {
-            Closeable.closeQuietly(closeableSet);
-            closeableSet.clear();
+            performClose();
         }
     };
-    private String hostname;
-    private int port;
 
-    private ChronicleContext() {
+    private String hostname;
+
+    private int port;
+    private boolean buffered;
+
+    protected ChronicleContext() {
     }
 
-    public static ChronicleContext create() {
+    public static ChronicleContext newContext() {
         return new ChronicleContext();
     }
 
-    public static ChronicleContext asTester() {
-        return create().hostname(null).port(0);
-    }
-
-    public static ChronicleContext asServer(int port) {
+    public static ChronicleContext newServerContext(int port) {
         if ((port & 0xFFFF) != port)
             throw new IllegalArgumentException();
-        return create().hostname(null).port(port);
+        return newContext().hostname(null).port(port);
     }
 
-    public static ChronicleContext asClient(String hostname, int port) {
+    public static ChronicleContext newClientContext(String hostname, int port) {
         Objects.requireNonNull(hostname);
         if ((port & 0xFFFF) != port || port == 0)
             throw new IllegalArgumentException();
-        return create().hostname(hostname).port(port);
+        return newContext().hostname(hostname).port(port);
     }
 
     public <I, O> Runnable serviceAsRunnable(ChannelHandler handler, Function<O, I> msFunction, Class<O> tClass) {
-        final ChannelSupplier supplier0 = newChannelSupplier(handler);
-        final Channel channel0 = supplier0.get();
+        final ChronicleChannelSupplier supplier0 = newChannelSupplier(handler);
+        final ChronicleChannel channel0 = supplier0.get();
         I microservice = msFunction.apply(channel0.methodWriter(tClass));
         final MethodReader echoingReader = channel0.methodReader(microservice);
         return () -> {
@@ -69,6 +68,31 @@ public class ChronicleContext extends SelfDescribingMarshallable implements Clos
                 Jvm.warn().on(ChronicleContext.class, "Error stopped reading thread", t);
             }
         };
+    }
+
+    public ChronicleChannelSupplier newChannelSupplier(ChannelHandler handler) {
+        final ChronicleChannelSupplier connectionSupplier = new ChronicleChannelSupplier(this, handler);
+        connectionSupplier.hostname(hostname()).port(port()).buffered(buffered()).initiator(true);
+        return connectionSupplier;
+    }
+
+    @Override
+    public void close() {
+        closeable.close();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return closeable.isClosed();
+    }
+
+    public void addCloseable(Closeable closeable) {
+        closeableSet.add(closeable);
+    }
+
+    protected void performClose() {
+        Closeable.closeQuietly(closeableSet);
+        closeableSet.clear();
     }
 
     public String hostname() {
@@ -89,23 +113,12 @@ public class ChronicleContext extends SelfDescribingMarshallable implements Clos
         return this;
     }
 
-    @Override
-    public void close() {
-        closeable.close();
+    public boolean buffered() {
+        return buffered;
     }
 
-    @Override
-    public boolean isClosed() {
-        return closeable.isClosed();
-    }
-
-    public ChannelSupplier newChannelSupplier(ChannelHandler handler) {
-        final ChannelSupplier connectionSupplier = new ChannelSupplier(this, handler);
-        connectionSupplier.hostname(hostname()).port(port).initiator(true);
-        return connectionSupplier;
-    }
-
-    public void addCloseable(Closeable closeable) {
-        closeableSet.add(closeable);
+    public ChronicleContext buffered(boolean buffered) {
+        this.buffered = buffered;
+        return this;
     }
 }

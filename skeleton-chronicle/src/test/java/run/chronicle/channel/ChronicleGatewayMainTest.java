@@ -7,8 +7,8 @@ import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.Wire;
 import org.junit.Test;
-import run.chronicle.channel.api.Channel;
-import run.chronicle.channel.api.ChannelCfg;
+import run.chronicle.channel.api.ChronicleChannel;
+import run.chronicle.channel.api.ChronicleChannelCfg;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -40,8 +40,8 @@ public class ChronicleGatewayMainTest {
                 "port: 65432";
         try (ChronicleGatewayMain main = Marshallable.fromString(ChronicleGatewayMain.class, cfg).start()) {
 
-            final ChannelCfg channelCfg = new ChannelCfg().hostname("localhost").port(65432).initiator(true);
-            Channel client = Channel.createFor(channelCfg, new SimplePipeHandler().publish(test_q).subscribe(test_q));
+            final ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().hostname("localhost").port(65432).initiator(true);
+            ChronicleChannel client = ChronicleChannel.newChannel(channelCfg, new PipeHandler().publish(test_q).subscribe(test_q));
             final Says says = client.methodWriter(Says.class);
             says.say("Hello World");
 
@@ -67,13 +67,13 @@ public class ChronicleGatewayMainTest {
 
     @Test
     public void twoConnections() throws IOException {
-        final ChannelCfg channelCfg = new ChannelCfg().hostname("localhost").port(65432).initiator(true);
+        final ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().hostname("localhost").port(65432).initiator(true);
         final String two_qs = "two.qs";
         IOTools.deleteDirWithFiles(two_qs);
 
         try (final ChronicleGatewayMain broker = new ChronicleGatewayMain().port(channelCfg.port()).start();
-             Channel clientA = Channel.createFor(channelCfg, new SimplePipeHandler().publish(two_qs + "/A").subscribe(two_qs + "/B"));
-             Channel clientB = Channel.createFor(channelCfg, new SimplePipeHandler().publish(two_qs + "/B").subscribe(two_qs + "/A"));
+             ChronicleChannel clientA = ChronicleChannel.newChannel(channelCfg, new PipeHandler().publish(two_qs + "/A").subscribe(two_qs + "/B"));
+             ChronicleChannel clientB = ChronicleChannel.newChannel(channelCfg, new PipeHandler().publish(two_qs + "/B").subscribe(two_qs + "/A"));
              ChronicleQueue qA = ChronicleQueue.single(two_qs + "/A");
              ExcerptTailer qAt = qA.createTailer();
              ChronicleQueue qB = ChronicleQueue.single(two_qs + "/B");

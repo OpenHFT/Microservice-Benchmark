@@ -8,5 +8,5 @@ public interface ChannelHandler extends ChannelHeader {
         return new SimpleHandler(connectionId());
     }
 
-    void run(ChronicleContext context, Channel channel);
+    void run(ChronicleContext context, ChronicleChannel channel);
 }

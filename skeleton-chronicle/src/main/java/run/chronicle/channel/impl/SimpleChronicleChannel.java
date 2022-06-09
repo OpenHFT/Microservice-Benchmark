@@ -9,10 +9,10 @@ import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.threads.PauserMode;
 import net.openhft.chronicle.wire.*;
 import run.chronicle.channel.SimpleHandler;
-import run.chronicle.channel.api.Channel;
-import run.chronicle.channel.api.ChannelCfg;
 import run.chronicle.channel.api.ChannelHandler;
 import run.chronicle.channel.api.ChannelHeader;
+import run.chronicle.channel.api.ChronicleChannel;
+import run.chronicle.channel.api.ChronicleChannelCfg;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,17 +22,17 @@ import java.util.Objects;
 
 import static net.openhft.chronicle.core.io.Closeable.closeQuietly;
 
-public class SimpleChannel extends SimpleCloseable implements Channel {
+public class SimpleChronicleChannel extends SimpleCloseable implements ChronicleChannel {
     public static final String HEADER = "header";
     private static final ChannelHeader NO_HEADER = Mocker.ignored(ChannelHeader.class);
-    private final ChannelCfg channelCfg;
+    private final ChronicleChannelCfg channelCfg;
     private SocketChannel sc;
     private Wire in = createBuffer(), out = createBuffer();
     private DocumentContextHolder dch = new ConnectionDocumentContextHolder();
     private ChannelHeader headerIn;
     private ChannelHeader headerOut;
 
-    public SimpleChannel(ChannelCfg channelCfg, ChannelHeader headerOut) {
+    public SimpleChronicleChannel(ChronicleChannelCfg channelCfg, ChannelHeader headerOut) {
         this.channelCfg = Objects.requireNonNull(channelCfg);
         this.headerOut = Objects.requireNonNull(headerOut);
 
@@ -41,7 +41,7 @@ public class SimpleChannel extends SimpleCloseable implements Channel {
         checkConnected();
     }
 
-    public SimpleChannel(ChannelCfg channelCfg, SocketChannel sc) {
+    public SimpleChronicleChannel(ChronicleChannelCfg channelCfg, SocketChannel sc) {
         this.channelCfg = Objects.requireNonNull(channelCfg);
         this.sc = Objects.requireNonNull(sc);
 
@@ -50,7 +50,7 @@ public class SimpleChannel extends SimpleCloseable implements Channel {
     }
 
     @Override
-    public ChannelCfg channelCfg() {
+    public ChronicleChannelCfg channelCfg() {
         return channelCfg;
     }
 
@@ -220,7 +220,7 @@ public class SimpleChannel extends SimpleCloseable implements Channel {
         return dch;
     }
 
-    public ChannelCfg connectionCfg() {
+    public ChronicleChannelCfg connectionCfg() {
         return channelCfg;
     }
 

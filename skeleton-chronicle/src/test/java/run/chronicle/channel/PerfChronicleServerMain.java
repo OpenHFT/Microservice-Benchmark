@@ -8,8 +8,8 @@ import net.openhft.chronicle.jlbh.JLBHOptions;
 import net.openhft.chronicle.jlbh.JLBHTask;
 import net.openhft.chronicle.threads.PauserMode;
 import net.openhft.chronicle.wire.Marshallable;
-import run.chronicle.channel.api.Channel;
-import run.chronicle.channel.api.ChannelCfg;
+import run.chronicle.channel.api.ChronicleChannel;
+import run.chronicle.channel.api.ChronicleChannelCfg;
 
 import java.util.concurrent.locks.LockSupport;
 
@@ -41,7 +41,7 @@ public class PerfChronicleServerMain implements JLBHTask {
     private Echoing echoing;
     private MethodReader reader;
     private Thread readerThread;
-    private Channel client;
+    private ChronicleChannel client;
     private volatile boolean complete;
     private int sent;
     private volatile int count;
@@ -76,18 +76,18 @@ public class PerfChronicleServerMain implements JLBHTask {
                 "port: 65432\n" +
                 "microservice: !run.chronicle.queue.EchoingMicroservice { }" +
                 "buffered: " + BUFFERED;
-        ChronicleServerMain main = Marshallable.fromString(ChronicleServerMain.class, cfg);
+        ChronicleServiceMain main = Marshallable.fromString(ChronicleServiceMain.class, cfg);
         Thread serverThread = new Thread(main::run);
         serverThread.setDaemon(true);
         serverThread.start();
 
-        final ChannelCfg session = new ChannelCfg()
+        final ChronicleChannelCfg session = new ChronicleChannelCfg()
                 .hostname("localhost")
                 .port(65432)
                 .initiator(true)
                 .buffered(BUFFERED)
                 .pauser(PauserMode.balanced);
-        client = Channel.createFor(session, new SimpleHandler("client"));
+        client = ChronicleChannel.newChannel(session, new SimpleHandler("client"));
         echoing = client.methodWriter(Echoing.class);
         reader = client.methodReader((Echoed) data -> {
             jlbh.sample(System.nanoTime() - data.timeNS);

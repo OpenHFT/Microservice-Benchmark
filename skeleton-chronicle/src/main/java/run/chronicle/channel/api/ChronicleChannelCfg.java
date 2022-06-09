@@ -6,7 +6,7 @@ import net.openhft.chronicle.wire.SelfDescribingMarshallable;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
-public class ChannelCfg extends SelfDescribingMarshallable {
+public class ChronicleChannelCfg extends SelfDescribingMarshallable {
     private boolean initiator;
     private boolean buffered;
     private PauserMode pauser = PauserMode.yielding;
@@ -15,7 +15,7 @@ public class ChannelCfg extends SelfDescribingMarshallable {
 
     private double connectionTimeoutSecs = 1.0;
 
-    public ChannelCfg initiator(boolean initiator) {
+    public ChronicleChannelCfg initiator(boolean initiator) {
         this.initiator = initiator;
         return this;
     }
@@ -28,7 +28,7 @@ public class ChannelCfg extends SelfDescribingMarshallable {
         return hostname;
     }
 
-    public ChannelCfg hostname(String hostname) {
+    public ChronicleChannelCfg hostname(String hostname) {
         this.hostname = hostname;
         return this;
     }
@@ -37,7 +37,7 @@ public class ChannelCfg extends SelfDescribingMarshallable {
         return port;
     }
 
-    public ChannelCfg port(int port) {
+    public ChronicleChannelCfg port(int port) {
         this.port = port;
         return this;
     }
@@ -50,7 +50,7 @@ public class ChannelCfg extends SelfDescribingMarshallable {
         return buffered;
     }
 
-    public ChannelCfg buffered(boolean buffered) {
+    public ChronicleChannelCfg buffered(boolean buffered) {
         this.buffered = buffered;
         return this;
     }
@@ -59,7 +59,7 @@ public class ChannelCfg extends SelfDescribingMarshallable {
         return pauser;
     }
 
-    public ChannelCfg pauser(PauserMode pauser) {
+    public ChronicleChannelCfg pauser(PauserMode pauser) {
         this.pauser = pauser;
         return this;
     }
@@ -68,7 +68,7 @@ public class ChannelCfg extends SelfDescribingMarshallable {
         return connectionTimeoutSecs;
     }
 
-    public ChannelCfg connectionTimeoutSecs(double connectionTimeoutSecs) {
+    public ChronicleChannelCfg connectionTimeoutSecs(double connectionTimeoutSecs) {
         this.connectionTimeoutSecs = connectionTimeoutSecs;
         return this;
     }

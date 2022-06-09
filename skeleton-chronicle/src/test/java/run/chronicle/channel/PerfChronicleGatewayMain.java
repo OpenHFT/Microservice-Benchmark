@@ -10,8 +10,8 @@ import net.openhft.chronicle.jlbh.JLBHOptions;
 import net.openhft.chronicle.jlbh.JLBHTask;
 import net.openhft.chronicle.threads.PauserMode;
 import net.openhft.chronicle.wire.Marshallable;
-import run.chronicle.channel.api.Channel;
-import run.chronicle.channel.api.ChannelCfg;
+import run.chronicle.channel.api.ChronicleChannel;
+import run.chronicle.channel.api.ChronicleChannelCfg;
 import run.chronicle.channel.impl.ClosedIORuntimeException;
 
 import java.io.IOException;
@@ -70,7 +70,7 @@ public class PerfChronicleGatewayMain implements JLBHTask {
     private Echoing echoing;
     private MethodReader reader;
     private Thread readerThread;
-    private Channel client, server;
+    private ChronicleChannel client, server;
     private volatile boolean complete;
     private int sent;
     private volatile int count;
@@ -116,19 +116,19 @@ public class PerfChronicleGatewayMain implements JLBHTask {
             }
         }
 
-        final ChannelCfg session = new ChannelCfg()
+        final ChronicleChannelCfg session = new ChronicleChannelCfg()
                 .hostname(HOSTNAME)
                 .port(65432)
                 .initiator(true)
                 .buffered(BUFFERED)
                 .pauser(PauserMode.balanced);
 
-        server = Channel.createFor(session, new SimplePipeHandler("server").subscribe("echo.in").publish("echo.out"));
+        server = ChronicleChannel.newChannel(session, new PipeHandler("server").subscribe("echo.in").publish("echo.out"));
         Thread serverThread = new Thread(() -> runServer(server, Echoed.class, EchoingMicroservice::new), "server");
         serverThread.setDaemon(true);
         serverThread.start();
 
-        client = Channel.createFor(session, new SimplePipeHandler("client").subscribe("echo.out").publish("echo.in"));
+        client = ChronicleChannel.newChannel(session, new PipeHandler("client").subscribe("echo.out").publish("echo.in"));
 
         echoing = client.methodWriter(Echoing.class);
         reader = client.methodReader((Echoed) data -> {
@@ -149,7 +149,7 @@ public class PerfChronicleGatewayMain implements JLBHTask {
         readerThread.start();
     }
 
-    private <OUT, MS> void runServer(Channel server, Class<OUT> outClass, Function<OUT, MS> serviceConstructor) {
+    private <OUT, MS> void runServer(ChronicleChannel server, Class<OUT> outClass, Function<OUT, MS> serviceConstructor) {
         final OUT out = server.methodWriter(outClass);
         final MS ms = serviceConstructor.apply(out);
         MethodReader reader = server.methodReader(ms);

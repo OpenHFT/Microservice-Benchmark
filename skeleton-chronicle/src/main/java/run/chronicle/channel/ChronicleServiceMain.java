@@ -8,11 +8,11 @@ import net.openhft.chronicle.threads.NamedThreadFactory;
 import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
-import run.chronicle.channel.api.Channel;
-import run.chronicle.channel.api.ChannelCfg;
-import run.chronicle.channel.impl.BufferedChannel;
+import run.chronicle.channel.api.ChronicleChannel;
+import run.chronicle.channel.api.ChronicleChannelCfg;
+import run.chronicle.channel.impl.BufferedChronicleChannel;
 import run.chronicle.channel.impl.ClosedIORuntimeException;
-import run.chronicle.channel.impl.SimpleChannel;
+import run.chronicle.channel.impl.SimpleChronicleChannel;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -22,7 +22,7 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ChronicleServerMain extends SelfDescribingMarshallable implements Closeable {
+public class ChronicleServiceMain extends SelfDescribingMarshallable implements Closeable {
     int port;
     Marshallable microservice;
     boolean buffered;
@@ -30,7 +30,7 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
     transient volatile boolean closed;
 
     public static void main(String[] args) throws IOException {
-        ChronicleServerMain main = Marshallable.fromFile(ChronicleServerMain.class, args[0]);
+        ChronicleServiceMain main = Marshallable.fromFile(ChronicleServiceMain.class, args[0]);
         main.run();
     }
 
@@ -39,13 +39,13 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
         try {
             ssc = ServerSocketChannel.open();
             ssc.bind(new InetSocketAddress(port));
-            ChannelCfg channelCfg = new ChannelCfg().port(port);
+            ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().port(port);
             ExecutorService service = Executors.newCachedThreadPool(new NamedThreadFactory("connections"));
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();
                 sc.socket().setTcpNoDelay(true);
-                final SimpleChannel connection0 = new SimpleChannel(channelCfg, sc);
-                Channel channel = buffered ? new BufferedChannel(connection0, Pauser.balanced()) : connection0;
+                final SimpleChronicleChannel connection0 = new SimpleChronicleChannel(channelCfg, sc);
+                ChronicleChannel channel = buffered ? new BufferedChronicleChannel(connection0, Pauser.balanced()) : connection0;
                 service.submit(() -> new ConnectionHandler(channel).run());
             }
         } catch (Throwable e) {
@@ -67,9 +67,9 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
     }
 
     class ConnectionHandler {
-        final Channel channel;
+        final ChronicleChannel channel;
 
-        public ConnectionHandler(Channel channel) {
+        public ConnectionHandler(ChronicleChannel channel) {
             this.channel = channel;
         }
 
@@ -77,7 +77,7 @@ public class ChronicleServerMain extends SelfDescribingMarshallable implements C
             try {
                 System.out.println("Server got " + channel.headerIn());
 
-                final Marshallable microservice = ChronicleServerMain.this.microservice.deepCopy();
+                final Marshallable microservice = ChronicleServiceMain.this.microservice.deepCopy();
                 final MethodReader reader = channel.methodReaderBuilder().build(microservice);
                 final Field field = Jvm.getFieldOrNull(microservice.getClass(), "out");
                 if (field == null)

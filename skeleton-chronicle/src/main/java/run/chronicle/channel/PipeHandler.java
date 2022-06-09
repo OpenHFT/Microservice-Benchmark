@@ -13,14 +13,14 @@ import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.NanoTimestampLongConverter;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
-import run.chronicle.channel.api.Channel;
 import run.chronicle.channel.api.ChannelHandler;
+import run.chronicle.channel.api.ChronicleChannel;
 import run.chronicle.channel.api.ChronicleContext;
 import run.chronicle.channel.api.SystemContext;
-import run.chronicle.channel.impl.BufferedChannel;
+import run.chronicle.channel.impl.BufferedChronicleChannel;
 import run.chronicle.channel.impl.ClosedIORuntimeException;
 
-public class SimplePipeHandler extends SelfDescribingMarshallable implements ChannelHandler {
+public class PipeHandler extends SelfDescribingMarshallable implements ChannelHandler {
     private SystemContext systemContext = SystemContext.INSTANCE;
 
     private String connectionId;
@@ -30,13 +30,17 @@ public class SimplePipeHandler extends SelfDescribingMarshallable implements Cha
 
     private boolean buffered;
 
-    public SimplePipeHandler() {
+    public PipeHandler() {
         this(NanoTimestampLongConverter.INSTANCE.asString(
                 SystemTimeProvider.CLOCK.currentTimeNanos()));
     }
 
-    public SimplePipeHandler(String connectionId) {
+    public PipeHandler(String connectionId) {
         this.connectionId = connectionId;
+    }
+
+    public PipeHandler flip() {
+        return new PipeHandler().publish(subscribe()).subscribe(publish());
     }
 
     @Override
@@ -49,7 +53,7 @@ public class SimplePipeHandler extends SelfDescribingMarshallable implements Cha
         return connectionId;
     }
 
-    public SimplePipeHandler connectionId(String connectionId) {
+    public PipeHandler connectionId(String connectionId) {
         this.connectionId = connectionId;
         return this;
     }
@@ -58,7 +62,7 @@ public class SimplePipeHandler extends SelfDescribingMarshallable implements Cha
         return publish;
     }
 
-    public SimplePipeHandler publish(String publish) {
+    public PipeHandler publish(String publish) {
         this.publish = publish;
         return this;
     }
@@ -67,22 +71,23 @@ public class SimplePipeHandler extends SelfDescribingMarshallable implements Cha
         return subscribe;
     }
 
-    public SimplePipeHandler subscribe(String subscribe) {
+    public PipeHandler subscribe(String subscribe) {
         this.subscribe = subscribe;
         return this;
     }
 
     @Override
-    public void run(ChronicleContext context, Channel channel) {
+    public void run(ChronicleContext context, ChronicleChannel channel) {
         Pauser pauser = Pauser.balanced();
 
         ChronicleQueue subscribeQ = null;
         final ExcerptTailer tailer;
 
-        if (channel instanceof BufferedChannel) {
-            BufferedChannel bc = (BufferedChannel) channel;
+        if (channel instanceof BufferedChronicleChannel) {
+            BufferedChronicleChannel bc = (BufferedChronicleChannel) channel;
             subscribeQ = single(subscribe);
-            tailer = subscribeQ.createTailer().toStart();
+            final String id = channel.headerIn().connectionId();
+            tailer = subscribeQ.createTailer(id).toStart();
             bc.eventPoller(conn -> {
                 boolean wrote = false;
                 while (copyOneMessage(conn, tailer))
@@ -114,7 +119,6 @@ public class SimplePipeHandler extends SelfDescribingMarshallable implements Cha
                         continue;
                     }
 
-//                    peek(dc, "I ");
                     try (DocumentContext dc2 = appender.writingDocument()) {
                         dc.wire().copyTo(dc2.wire());
                     }
@@ -134,17 +138,7 @@ public class SimplePipeHandler extends SelfDescribingMarshallable implements Cha
         }
     }
 
-/*    private void peek(DocumentContext dc, String prefix) {
-        long pos = dc.wire().bytes().readPosition();
-        dc.wire().bytes().readSkip(-4);
-        try {
-            System.out.println(prefix + Wires.fromSizePrefixedBlobs(dc.wire()));
-        } finally {
-            dc.wire().bytes().readPosition(pos);
-        }
-    }*/
-
-    private void queueTailer(Pauser pauser, Channel channel) {
+    private void queueTailer(Pauser pauser, ChronicleChannel channel) {
         try (AffinityLock lock = AffinityLock.acquireLock();
              ChronicleQueue subscribeQ = single(subscribe);
              ExcerptTailer tailer = subscribeQ.createTailer().toStart()) {
@@ -157,7 +151,7 @@ public class SimplePipeHandler extends SelfDescribingMarshallable implements Cha
         }
     }
 
-    private boolean copyOneMessage(Channel channel, ExcerptTailer tailer) {
+    private boolean copyOneMessage(ChronicleChannel channel, ExcerptTailer tailer) {
         try (DocumentContext dc = tailer.readingDocument()) {
             if (!dc.isPresent()) {
                 return false;
@@ -165,7 +159,7 @@ public class SimplePipeHandler extends SelfDescribingMarshallable implements Cha
             if (dc.isMetaData()) {
                 return false;
             }
-//                    peek(dc, "O ");
+
             final long dataBuffered;
             try (DocumentContext dc2 = channel.writingDocument()) {
                 dc.wire().copyTo(dc2.wire());

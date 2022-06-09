@@ -4,23 +4,23 @@ import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
 import org.junit.Test;
-import run.chronicle.channel.api.Channel;
-import run.chronicle.channel.api.ChannelCfg;
+import run.chronicle.channel.api.ChronicleChannel;
+import run.chronicle.channel.api.ChronicleChannelCfg;
 
-public class ChronicleServerMainTest {
+public class ChronicleServiceMainTest {
 
     @Test
     public void handshake() {
         String cfg = "" +
                 "port: 65432\n" +
                 "microservice: !run.chronicle.queue.ClosingMicroservice { }";
-        ChronicleServerMain main = Marshallable.fromString(ChronicleServerMain.class, cfg);
+        ChronicleServiceMain main = Marshallable.fromString(ChronicleServiceMain.class, cfg);
         Thread t = new Thread(main::run);
         t.setDaemon(true);
         t.start();
 
-        final ChannelCfg channelCfg = new ChannelCfg().hostname("localhost").port(65432).initiator(true).buffered(true);
-        Channel client = Channel.createFor(channelCfg, new SimpleHandler("test"));
+        final ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().hostname("localhost").port(65432).initiator(true).buffered(true);
+        ChronicleChannel client = ChronicleChannel.newChannel(channelCfg, new SimpleHandler("test"));
         client.close();
         main.close();
     }
