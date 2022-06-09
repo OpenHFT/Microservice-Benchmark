@@ -94,8 +94,8 @@ public class BufferedChannel implements Channel, Closeable {
     }
 
     @Override
-    public ChannelCfg sessionCfg() {
-        return connection.sessionCfg();
+    public ChannelCfg channelCfg() {
+        return connection.channelCfg();
     }
 
     @Override

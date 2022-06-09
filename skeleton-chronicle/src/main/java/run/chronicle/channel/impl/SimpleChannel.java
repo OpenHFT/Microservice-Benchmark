@@ -50,7 +50,7 @@ public class SimpleChannel extends SimpleCloseable implements Channel {
     }
 
     @Override
-    public ChannelCfg sessionCfg() {
+    public ChannelCfg channelCfg() {
         return channelCfg;
     }
 

@@ -1,5 +1,7 @@
 package run.chronicle.channel.api;
 
+import net.openhft.chronicle.bytes.MethodReader;
+import net.openhft.chronicle.core.Jvm;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.wire.Marshallable;
 import net.openhft.chronicle.wire.MarshallableIn;
@@ -18,9 +20,26 @@ public interface Channel extends Closeable, MarshallableOut, MarshallableIn {
         return channel;
     }
 
-    ChannelCfg sessionCfg();
+    ChannelCfg channelCfg();
 
     Marshallable headerOut();
 
     Marshallable headerIn();
+
+    default Runnable subscriberAsRunnable(Object subscriptionHandler) {
+        final MethodReader echoingReader = methodReader(subscriptionHandler);
+        return () -> {
+            try {
+                Pauser pauser = channelCfg().pauser().get();
+                while (!isClosed()) {
+                    if (echoingReader.readOne())
+                        pauser.reset();
+                    else
+                        pauser.pause();
+                }
+            } catch (Throwable t) {
+                Jvm.warn().on(ChronicleContext.class, "Error stopped reading thread", t);
+            }
+        };
+    }
 }
