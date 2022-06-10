@@ -2,6 +2,8 @@
 
 This is a minimalist implementation of Chronicle for the purposes of an open source benchmark. It does what is essential for the benchmark only and is not suitable for production.
 
+Doc's at - https://docs.google.com/document/d/1A5bVVew0mGsrGYJIpOjsgHM6PMyuDaGBBawUbcDHgaA/edit?usp=sharing
+
 == Skeleton system
 
 This implementation only
