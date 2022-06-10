@@ -86,7 +86,7 @@ public class PipeHandler extends SelfDescribingMarshallable implements ChannelHa
         final String id = channel.headerIn().connectionId();
         if (channel instanceof BufferedChronicleChannel) {
             BufferedChronicleChannel bc = (BufferedChronicleChannel) channel;
-            subscribeQ = single(subscribe);
+            subscribeQ = newQueue(subscribe);
             tailer = subscribeQ.createTailer(id);
             bc.eventPoller(conn -> {
                 boolean wrote = false;
@@ -104,7 +104,7 @@ public class PipeHandler extends SelfDescribingMarshallable implements ChannelHa
 
         Thread.currentThread().setName(connectionId + "~reader");
         try (AffinityLock lock = AffinityLock.acquireLock();
-             ChronicleQueue publishQ = single(publish);
+             ChronicleQueue publishQ = newQueue(publish);
              ExcerptAppender appender = publishQ.acquireAppender()) {
 
             while (!channel.isClosed()) {
@@ -140,7 +140,7 @@ public class PipeHandler extends SelfDescribingMarshallable implements ChannelHa
 
     private void queueTailer(String id, Pauser pauser, ChronicleChannel channel) {
         try (AffinityLock lock = AffinityLock.acquireLock();
-             ChronicleQueue subscribeQ = single(subscribe);
+             ChronicleQueue subscribeQ = newQueue(subscribe);
              ExcerptTailer tailer = subscribeQ.createTailer(id)) {
             while (!channel.isClosed()) {
                 if (copyOneMessage(channel, tailer))
@@ -171,7 +171,7 @@ public class PipeHandler extends SelfDescribingMarshallable implements ChannelHa
         }
     }
 
-    private ChronicleQueue single(String subscribe) {
+    private ChronicleQueue newQueue(String subscribe) {
         return ChronicleQueue.singleBuilder(subscribe).blockSize(OS.isSparseFileSupported() ? 512L << 30 : 64L << 20).build();
     }
 }

@@ -67,7 +67,7 @@ public class ChronicleGatewayMainTest {
 
     @Test
     public void twoConnections() throws IOException {
-        final ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().hostname("localhost").port(65432).initiator(true);
+        final ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().hostname("localhost").port(65402).initiator(true);
         final String two_qs = "two.qs";
         IOTools.deleteDirWithFiles(two_qs);
 

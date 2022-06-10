@@ -31,8 +31,8 @@ public class PipeHandlerTest {
     public static List<Object[]> combinations() {
         return Arrays.asList(
                 new Object[]{"in-memory", null, 0},
-                new Object[]{"server", null, 65431},
-                new Object[]{"client", "localhost", 65432}
+                new Object[]{"server", null, 65441},
+                new Object[]{"client", "localhost", 65442}
         );
     }
 

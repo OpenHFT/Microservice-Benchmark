@@ -68,6 +68,7 @@ public class ChronicleGatewayMain extends ChronicleContext implements Closeable 
     private void bindSSC() throws IOException {
         if (ssc == null) {
             ssc = ServerSocketChannel.open();
+            ssc.socket().setReuseAddress(true);
             ssc.bind(new InetSocketAddress(port()));
         }
     }
