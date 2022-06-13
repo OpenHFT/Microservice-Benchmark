@@ -15,6 +15,8 @@ import run.chronicle.channel.api.ChronicleChannelCfg;
 import run.chronicle.channel.impl.ClosedIORuntimeException;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Function;
 
@@ -52,7 +54,7 @@ public class PerfChronicleGatewayMain implements JLBHTask {
     static final int ITERATIONS = Integer.getInteger("iterations", THROUGHPUT * 30);
     static final int SIZE = Integer.getInteger("size", 256);
     static final boolean BUFFERED = Jvm.getBoolean("buffered");
-    static final String HOSTNAME = System.getProperty("hostname", "localhost");
+    static final String URL = System.getProperty("url", "tcp://127.0.0.1:1248");
     private static final PauserMode PAUSER_MODE = PauserMode.valueOf(System.getProperty("pauserMode", PauserMode.balanced.name()));
     private Data data;
     private Echoing echoing;
@@ -67,7 +69,7 @@ public class PerfChronicleGatewayMain implements JLBHTask {
 
     public static void main(String[] args) {
         System.out.println("" +
-                "-Dhostname=" + HOSTNAME + " " +
+                "-Durl=" + URL + " " +
                 "-Dsize=" + SIZE + " " +
                 "-Dthroughput=" + THROUGHPUT + " " +
                 "-Diterations=" + ITERATIONS + " " +
@@ -78,6 +80,7 @@ public class PerfChronicleGatewayMain implements JLBHTask {
                 .warmUpIterations(50_000)
                 .iterations(ITERATIONS)
                 .throughput(THROUGHPUT)
+                .acquireLock(AffinityLock::acquireCore)
                 // disable as otherwise single GC event skews results heavily
                 .recordOSJitter(false)
                 .accountForCoordinatedOmission(true)
@@ -91,12 +94,12 @@ public class PerfChronicleGatewayMain implements JLBHTask {
         this.data = new Data();
         this.data.data = new byte[SIZE - Long.BYTES];
 
-        if (HOSTNAME.equals("localhost")) {
+        if (URL.contains("localhost")) {
             IOTools.deleteDirWithFiles("echo.in");
             IOTools.deleteDirWithFiles("echo.out");
 
             String brokerCfg = "" +
-                    "port: 65432\n" +
+                    "url: " + URL + "\n" +
                     "buffered: " + BUFFERED;
             try {
                 main = Marshallable.fromString(ChronicleGatewayMain.class, brokerCfg).start();
@@ -104,10 +107,15 @@ public class PerfChronicleGatewayMain implements JLBHTask {
                 throw new RuntimeException(e);
             }
         }
-
+        java.net.URL url;
+        try {
+            url = new URL(URL);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
         final ChronicleChannelCfg channelCfg = new ChronicleChannelCfg()
-                .hostname(HOSTNAME)
-                .port(65432)
+                .hostname(url.getHost())
+                .port(url.getPort())
                 .initiator(true)
                 .buffered(BUFFERED)
                 .pauserMode(PAUSER_MODE);
@@ -117,7 +125,7 @@ public class PerfChronicleGatewayMain implements JLBHTask {
         serverThread.setDaemon(true);
         serverThread.start();
 
-        client = ChronicleChannel.newChannel(channelCfg, new PipeHandler("client").subscribe("echo.out").publish("echo.in"));
+        client = ChronicleChannel.newChannel(channelCfg, new PipeHandler("client").flip());
 
         echoing = client.methodWriter(Echoing.class);
         reader = client.methodReader((Echoed) data -> {

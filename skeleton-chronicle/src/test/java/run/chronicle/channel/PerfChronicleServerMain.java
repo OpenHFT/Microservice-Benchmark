@@ -11,6 +11,8 @@ import net.openhft.chronicle.wire.Marshallable;
 import run.chronicle.channel.api.ChronicleChannel;
 import run.chronicle.channel.api.ChronicleChannelCfg;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.concurrent.locks.LockSupport;
 
 /*
@@ -51,7 +53,7 @@ public class PerfChronicleServerMain implements JLBHTask {
     static final int ITERATIONS = Integer.getInteger("iterations", THROUGHPUT * 30);
     static final int SIZE = Integer.getInteger("size", 256);
     static final boolean BUFFERED = Jvm.getBoolean("buffered");
-    static final String HOSTNAME = System.getProperty("hostname", "localhost");
+    static final String URL = System.getProperty("url", "tcp://127.0.0.1:1248");
     private Data data;
     private Echoing echoing;
     private MethodReader reader;
@@ -64,7 +66,7 @@ public class PerfChronicleServerMain implements JLBHTask {
 
     public static void main(String[] args) {
         System.out.println("" +
-                "-Dhostname=" + HOSTNAME + " " +
+                "-Durl=" + URL + " " +
                 "-Dsize=" + SIZE + " " +
                 "-Dthroughput=" + THROUGHPUT + " " +
                 "-Diterations=" + ITERATIONS + " " +
@@ -88,10 +90,9 @@ public class PerfChronicleServerMain implements JLBHTask {
         this.data = new Data();
         this.data.data = new byte[SIZE - Long.BYTES];
 
-        if (HOSTNAME.equals("localhost")) {
-            //language=yaml
+        if (URL.contains("localhost")) {
             String cfg = "" +
-                    "port: 65432\n" +
+                    "url: " + URL + "\n" +
                     "microservice: !run.chronicle.channel.EchoingMicroservice { }\n" +
                     "buffered: " + BUFFERED;
             ChronicleServiceMain main = Marshallable.fromString(ChronicleServiceMain.class, cfg);
@@ -99,10 +100,15 @@ public class PerfChronicleServerMain implements JLBHTask {
             serverThread.setDaemon(true);
             serverThread.start();
         }
-
+        java.net.URL url;
+        try {
+            url = new URL(URL);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
         final ChronicleChannelCfg session = new ChronicleChannelCfg()
-                .hostname(HOSTNAME)
-                .port(65432)
+                .hostname(url.getHost())
+                .port(url.getPort())
                 .initiator(true)
                 .buffered(BUFFERED)
                 .pauserMode(PauserMode.balanced);
@@ -121,7 +127,7 @@ public class PerfChronicleServerMain implements JLBHTask {
                 if (!complete)
                     t.printStackTrace();
             }
-        }, "reader");
+        }, "last-reader");
         readerThread.setDaemon(true);
         readerThread.start();
     }
