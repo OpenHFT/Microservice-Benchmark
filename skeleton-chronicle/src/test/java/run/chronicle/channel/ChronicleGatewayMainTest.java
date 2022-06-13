@@ -37,7 +37,7 @@ public class ChronicleGatewayMainTest {
         final String test_q = "test.q";
         IOTools.deleteDirWithFiles(test_q);
         String cfg = "" +
-                "port: 65432";
+                "url: tcp://localhost:65432\n";
         try (ChronicleGatewayMain main = Marshallable.fromString(ChronicleGatewayMain.class, cfg).start()) {
 
             final ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().hostname("localhost").port(65432).initiator(true);
@@ -71,7 +71,7 @@ public class ChronicleGatewayMainTest {
         final String two_qs = "two.qs";
         IOTools.deleteDirWithFiles(two_qs);
 
-        try (final ChronicleGatewayMain broker = new ChronicleGatewayMain().port(channelCfg.port()).start();
+        try (final ChronicleGatewayMain broker = new ChronicleGatewayMain(channelCfg.url()).start();
              ChronicleChannel clientA = ChronicleChannel.newChannel(channelCfg, new PipeHandler().publish(two_qs + "/A").subscribe(two_qs + "/B"));
              ChronicleChannel clientB = ChronicleChannel.newChannel(channelCfg, new PipeHandler().publish(two_qs + "/B").subscribe(two_qs + "/A"));
              ChronicleQueue qA = ChronicleQueue.single(two_qs + "/A");

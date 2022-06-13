@@ -28,20 +28,19 @@ public class ChronicleGatewayMain extends ChronicleContext implements Closeable 
     private boolean buffered;
     private PauserMode pauserMode;
 
+
+    public ChronicleGatewayMain(String url) {
+        super(url);
+    }
+
     public static void main(String... args) throws IOException {
         ChronicleGatewayMain main = args.length == 0
-                ? new ChronicleGatewayMain()
-                .port(Integer.getInteger("port", 65432))
+                ? new ChronicleGatewayMain("tcp://localhost:" + Integer.getInteger("port", 65432))
                 .buffered(Jvm.getBoolean("buffered"))
                 .pauserMode(PauserMode.valueOf(System.getProperty("pauserMode", PauserMode.balanced.name())))
                 : Marshallable.fromFile(ChronicleGatewayMain.class, args[0]);
         System.out.println("Starting  " + main);
         main.run();
-    }
-
-    public ChronicleGatewayMain port(int port) {
-        super.port(port);
-        return this;
     }
 
     public boolean buffered() {
@@ -69,14 +68,14 @@ public class ChronicleGatewayMain extends ChronicleContext implements Closeable 
         if (ssc == null) {
             ssc = ServerSocketChannel.open();
             ssc.socket().setReuseAddress(true);
-            ssc.bind(new InetSocketAddress(port()));
+            ssc.bind(new InetSocketAddress(url().getPort()));
         }
     }
 
     private void run() {
         try {
             bindSSC();
-            ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().port(port()).pauserMode(pauserMode).buffered(buffered);
+            ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().port(url().getPort()).pauserMode(pauserMode).buffered(buffered);
             ExecutorService service = Executors.newCachedThreadPool(new NamedThreadFactory("connections"));
             while (!isClosed()) {
                 final SocketChannel sc = ssc.accept();

@@ -12,27 +12,23 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.Assume.assumeFalse;
 
 @RunWith(Parameterized.class)
 public class PipeHandlerTest {
 
-    private String name;
-    private String hostname;
-    private int port;
+    private final String url;
 
-    public PipeHandlerTest(String name, String hostname, int port) {
-        this.name = name;
-        this.hostname = hostname;
-        this.port = port;
+    public PipeHandlerTest(String name, String url) {
+        this.url = url;
     }
 
-    @Parameterized.Parameters(name = "name: {0}, hostname: {1}, port: {2}")
+    @Parameterized.Parameters(name = "name: {0}, url: {1}")
     public static List<Object[]> combinations() {
         return Arrays.asList(
-                new Object[]{"in-memory", null, 0},
-                new Object[]{"server", null, 65441},
-                new Object[]{"client", "localhost", 65442}
+                new Object[]{"internal", "internal://"},
+                new Object[]{"client-only", "tcp://127.0.0.1:65441"},
+                new Object[]{"server", "tcp://localhost:65442"}
         );
     }
 
@@ -40,10 +36,10 @@ public class PipeHandlerTest {
     public void testPubSub() throws IOException {
         IOTools.deleteDirWithFiles("test-q");
 
-        try (ChronicleContext context = ChronicleContext.newContext().hostname(hostname).port(port)) {
-            // do we assume a broker is running
-            if (hostname != null) {
-                ChronicleGatewayMain gateway = new ChronicleGatewayMain().port(port);
+        try (ChronicleContext context = ChronicleContext.newContext(url)) {
+            // do we assume a server is running
+            if (url.contains("/127.0.0.1:")) {
+                ChronicleGatewayMain gateway = new ChronicleGatewayMain(this.url);
                 context.addCloseable(gateway);
                 gateway.start();
             }
@@ -57,7 +53,7 @@ public class PipeHandlerTest {
             assertEquals("say: Hello World",
                     eventType + ": " + text);
         } catch (UnsupportedOperationException uos) {
-            assumeTrue(port > 0);
+            assumeFalse(url.startsWith("internal"));
         }
     }
 }

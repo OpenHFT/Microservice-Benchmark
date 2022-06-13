@@ -42,6 +42,12 @@ public class ChronicleChannelCfg extends SelfDescribingMarshallable {
         return this;
     }
 
+    public String url() {
+        if (hostname.equals("internal"))
+            return "interna;l://";
+        return "tcp://" + hostname + ":" + port;
+    }
+
     public SocketAddress remote() {
         return new InetSocketAddress(hostname, port);
     }

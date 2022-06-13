@@ -7,14 +7,11 @@ import run.chronicle.channel.api.ChronicleChannel;
 import run.chronicle.channel.api.ChronicleContext;
 
 public class Main {
-    static final String HOSTNAME = System.getProperty("hostname");
-    static final int PORT = Integer.getInteger("port", 0);
-
     public static void main(String[] args) {
         final String in = "in";
         final String out = "out";
         IOTools.deleteDirWithFiles(in, out);
-        try (ChronicleContext context = ChronicleContext.newContext().hostname(HOSTNAME).port(PORT)) {
+        try (ChronicleContext context = ChronicleContext.newContext(args[0])) {
             // start a service
             final ChannelHandler handler0 = new PipeHandler().publish(in).subscribe(out);
             Runnable runs = context.serviceAsRunnable(handler0, EchoingMicroservice::new, Echoed.class);
