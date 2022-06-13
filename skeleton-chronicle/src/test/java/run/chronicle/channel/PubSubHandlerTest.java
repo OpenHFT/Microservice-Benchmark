@@ -1,10 +1,8 @@
 package run.chronicle.channel;
 
-import net.openhft.chronicle.bytes.Bytes;
 import net.openhft.chronicle.bytes.MethodReader;
 import net.openhft.chronicle.core.io.IOTools;
 import net.openhft.chronicle.wire.Wire;
-import net.openhft.chronicle.wire.YamlWire;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -56,7 +54,7 @@ public class PubSubHandlerTest {
 
             pss.to("test-q").say("Hello");
 
-            Wire wire = new YamlWire(Bytes.allocateElasticOnHeap()).useTextDocuments();
+            Wire wire = Wire.newYamlWireOnHeap();
             final FromSays fromSays = wire.methodWriter(FromSays.class);
             final MethodReader reader = channel.methodReader(fromSays);
             reader.readOne();
