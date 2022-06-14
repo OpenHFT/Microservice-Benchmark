@@ -91,7 +91,12 @@ public class ChronicleContext extends SelfDescribingMarshallable implements Clos
 
         final ChronicleChannelSupplier connectionSupplier = new ChronicleChannelSupplier(this, handler);
         final String hostname = url().getHost();
-        connectionSupplier.hostname(hostname == null ? "localhost" : hostname).port(url().getPort()).buffered(buffered()).initiator(true);
+        connectionSupplier
+                .protocol(url().getProtocol())
+                .hostname(hostname == null || hostname.isEmpty() ? "localhost" : hostname)
+                .port(url().getPort())
+                .buffered(buffered())
+                .initiator(true);
         return connectionSupplier;
     }
 

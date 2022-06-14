@@ -13,12 +13,10 @@ import net.openhft.chronicle.threads.Pauser;
 import net.openhft.chronicle.wire.DocumentContext;
 import net.openhft.chronicle.wire.NanoTimestampLongConverter;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
-import run.chronicle.channel.api.ChannelHandler;
-import run.chronicle.channel.api.ChronicleChannel;
-import run.chronicle.channel.api.ChronicleContext;
-import run.chronicle.channel.api.SystemContext;
+import run.chronicle.channel.api.*;
 import run.chronicle.channel.impl.BufferedChronicleChannel;
 import run.chronicle.channel.impl.ClosedIORuntimeException;
+import run.chronicle.channel.impl.QueuesChannel;
 
 public class PipeHandler extends SelfDescribingMarshallable implements ChannelHandler {
     private SystemContext systemContext = SystemContext.INSTANCE;
@@ -173,5 +171,10 @@ public class PipeHandler extends SelfDescribingMarshallable implements ChannelHa
 
     private ChronicleQueue newQueue(String subscribe) {
         return ChronicleQueue.singleBuilder(subscribe).blockSize(OS.isSparseFileSupported() ? 512L << 30 : 64L << 20).build();
+    }
+
+    @Override
+    public ChronicleChannel asInternalChannel(ChronicleContext context, ChronicleChannelCfg channelCfg) {
+        return new QueuesChannel(channelCfg, connectionId(), responseHeader(), newQueue(publish), newQueue(subscribe));
     }
 }

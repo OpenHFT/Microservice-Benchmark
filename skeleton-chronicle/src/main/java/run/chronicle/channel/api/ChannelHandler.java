@@ -9,4 +9,8 @@ public interface ChannelHandler extends ChannelHeader {
     }
 
     void run(ChronicleContext context, ChronicleChannel channel);
+
+    default ChronicleChannel asInternalChannel(ChronicleContext context, ChronicleChannelCfg channelCfg) {
+        throw new UnsupportedOperationException("Internal protocol not supported");
+    }
 }

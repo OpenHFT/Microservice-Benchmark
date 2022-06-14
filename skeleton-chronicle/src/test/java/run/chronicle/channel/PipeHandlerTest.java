@@ -12,7 +12,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeFalse;
 
 @RunWith(Parameterized.class)
 public class PipeHandlerTest {
@@ -33,7 +32,7 @@ public class PipeHandlerTest {
     }
 
     @Test
-    public void testPubSub() throws IOException {
+    public void testPipes() throws IOException {
         IOTools.deleteDirWithFiles("test-q");
 
         try (ChronicleContext context = ChronicleContext.newContext(url)) {
@@ -52,8 +51,6 @@ public class PipeHandlerTest {
             String text = channel.readOne(eventType, String.class);
             assertEquals("say: Hello World",
                     eventType + ": " + text);
-        } catch (UnsupportedOperationException uos) {
-            assumeFalse(url.startsWith("internal"));
         }
     }
 }
