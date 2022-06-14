@@ -175,6 +175,6 @@ public class PipeHandler extends SelfDescribingMarshallable implements ChannelHa
 
     @Override
     public ChronicleChannel asInternalChannel(ChronicleContext context, ChronicleChannelCfg channelCfg) {
-        return new QueuesChannel(channelCfg, connectionId(), responseHeader(), newQueue(publish), newQueue(subscribe));
+        return new QueuesChannel(channelCfg, this, newQueue(publish), newQueue(subscribe));
     }
 }
