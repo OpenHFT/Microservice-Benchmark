@@ -1,11 +1,11 @@
 package run.chronicle.channel.api;
 
-import run.chronicle.channel.SimpleHandler;
+import run.chronicle.channel.OkHeader;
 
 public interface ChannelHandler extends ChannelHeader {
 
     default ChannelHeader responseHeader() {
-        return new SimpleHandler(connectionId());
+        return new OkHeader(connectionId());
     }
 
     void run(ChronicleContext context, ChronicleChannel channel);

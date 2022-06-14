@@ -20,7 +20,7 @@ public class ChronicleServiceMainTest {
         t.start();
 
         final ChronicleChannelCfg channelCfg = new ChronicleChannelCfg().hostname("localhost").port(65432).initiator(true).buffered(true);
-        ChronicleChannel client = ChronicleChannel.newChannel(channelCfg, new SimpleHandler("test"));
+        ChronicleChannel client = ChronicleChannel.newChannel(channelCfg, new OkHeader("test"));
         client.close();
         main.close();
     }

@@ -8,7 +8,7 @@ import net.openhft.chronicle.core.io.IORuntimeException;
 import net.openhft.chronicle.core.io.SimpleCloseable;
 import net.openhft.chronicle.threads.PauserMode;
 import net.openhft.chronicle.wire.*;
-import run.chronicle.channel.SimpleHandler;
+import run.chronicle.channel.OkHeader;
 import run.chronicle.channel.api.ChannelHandler;
 import run.chronicle.channel.api.ChannelHeader;
 import run.chronicle.channel.api.ChronicleChannel;
@@ -167,7 +167,7 @@ public class TCPChronicleChannel extends SimpleCloseable implements ChronicleCha
         readHeader();
         headerOut = headerIn instanceof ChannelHandler
                 ? ((ChannelHandler) headerIn).responseHeader()
-                : new SimpleHandler(headerIn.connectionId());
+                : new OkHeader(headerIn.connectionId());
         writeHeader();
     }
 
