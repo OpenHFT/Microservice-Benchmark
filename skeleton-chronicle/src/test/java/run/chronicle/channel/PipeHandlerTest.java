@@ -26,8 +26,8 @@ public class PipeHandlerTest {
     public static List<Object[]> combinations() {
         return Arrays.asList(
                 new Object[]{"internal", "internal://"},
-                new Object[]{"client-only", "tcp://127.0.0.1:65441"},
-                new Object[]{"server", "tcp://localhost:65442"}
+                new Object[]{"client-only", "tcp://localhost:65441"},
+                new Object[]{"server", "tcp://:65442"}
         );
     }
 
@@ -37,7 +37,7 @@ public class PipeHandlerTest {
 
         try (ChronicleContext context = ChronicleContext.newContext(url)) {
             // do we assume a server is running
-            if (url.contains("/127.0.0.1:")) {
+            if (url.contains("/localhost:")) {
                 ChronicleGatewayMain gateway = new ChronicleGatewayMain(this.url);
                 context.addCloseable(gateway);
                 gateway.start();

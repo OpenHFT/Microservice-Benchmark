@@ -101,7 +101,7 @@ public class ChronicleContext extends SelfDescribingMarshallable implements Clos
     }
 
     private synchronized void checkServerRunning() {
-        if ("localhost".equals(url().getHost()) && gateway == null) {
+        if (url().getProtocol().equals("tcp") && "".equals(url().getHost()) && gateway == null) {
             gateway = new ChronicleGatewayMain(url);
             try {
                 addCloseable(gateway);
