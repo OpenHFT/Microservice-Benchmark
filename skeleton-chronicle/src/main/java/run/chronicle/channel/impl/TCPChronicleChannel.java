@@ -175,6 +175,7 @@ public class TCPChronicleChannel extends SimpleCloseable implements ChronicleCha
         try (DocumentContext dc = writingDocument(true)) {
             dc.wire().write(HEADER).object(headerOut);
         }
+        out.bytes().singleThreadedCheckReset();
     }
 
     @Override
@@ -206,6 +207,7 @@ public class TCPChronicleChannel extends SimpleCloseable implements ChronicleCha
                 break;
             }
         }
+        in.bytes().singleThreadedCheckReset();
     }
 
     @Override
