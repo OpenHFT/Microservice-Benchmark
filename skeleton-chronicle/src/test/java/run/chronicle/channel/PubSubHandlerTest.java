@@ -49,6 +49,7 @@ public class PubSubHandlerTest {
             }
 
             ChronicleChannel channel = context.newChannelSupplier(new PubSubHandler()).get();
+            // subscribe to "test-q" and preface messages from that queue with `from: test-q`
             PubSubSays pss = channel.methodWriter(PubSubSays.class);
             pss.subscribe(new Subscribe().eventType("from").name("test-q"));
 
