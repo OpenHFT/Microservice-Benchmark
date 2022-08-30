@@ -4,7 +4,7 @@ import net.openhft.chronicle.bytes.BytesIn;
 import net.openhft.chronicle.bytes.BytesOut;
 import net.openhft.chronicle.bytes.BytesUtil;
 import net.openhft.chronicle.core.io.IORuntimeException;
-import net.openhft.chronicle.wire.Base128LongConverter;
+import net.openhft.chronicle.wire.Base85LongConverter;
 import net.openhft.chronicle.wire.BytesInBinaryMarshallable;
 import net.openhft.chronicle.wire.LongConversion;
 import net.openhft.chronicle.wire.NanoTimestampLongConverter;
@@ -20,8 +20,8 @@ public class ChronicleEvent extends BytesInBinaryMarshallable implements Event {
     @LongConversion(NanoTimestampLongConverter.class)
     private long dateTime1, dateTime2, dateTime3, dateTime4;
 
-    @LongConversion(Base128LongConverter.class)
-    private long text1, text2; // up to 9 ASCII chars
+    @LongConversion(Base85LongConverter.class)
+    private long text1, text2; // up to 10 ASCII chars
     private String text3, text4;
 
     private int number1, number2;

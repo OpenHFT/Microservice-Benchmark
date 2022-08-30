@@ -82,7 +82,7 @@ public class ChronicleDriver extends SelfDescribingMarshallable implements Drive
         final File path2 = new File(path, name);
         IOTools.deleteDirWithFiles(path2);
         return ChronicleQueue.singleBuilder(path2)
-                .useSparseFiles(true)
+                .blockSize(OS.isSparseFileSupported() ? 512L << 30 : 64L << 20)
                 .storeFileListener(StoreFileListener.NO_OP)
                 .readBufferMode(bufferMode)
                 .writeBufferMode(bufferMode)

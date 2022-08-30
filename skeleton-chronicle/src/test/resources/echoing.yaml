@@ -1,3 +1,0 @@
-port: 65432
-microservice: !run.chronicle.channel.EchoingMicroservice { }
-buffered: false
