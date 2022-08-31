@@ -2,7 +2,7 @@ package services.openmicro.driver.kafka;
 
 import services.openmicro.driver.api.EventHandler;
 
-public class EventMicroservice implements EventHandler<KafkaEvent> {
+public class EventMicroservice implements EventHandler<ChronicleEvent> {
     final transient EventHandler out;
 
     public EventMicroservice(EventHandler out) {
@@ -10,7 +10,7 @@ public class EventMicroservice implements EventHandler<KafkaEvent> {
     }
 
     @Override
-    public void event(KafkaEvent event) {
+    public void event(ChronicleEvent event) {
         event.transactTimeNS(System.nanoTime());
         out.event(event);
     }

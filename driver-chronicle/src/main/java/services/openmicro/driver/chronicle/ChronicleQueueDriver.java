@@ -19,8 +19,8 @@ import net.openhft.chronicle.wire.Comment;
 import net.openhft.chronicle.wire.SelfDescribingMarshallable;
 import services.openmicro.driver.api.Driver;
 import services.openmicro.driver.api.Event;
-import services.openmicro.driver.api.EventHandler;
 import services.openmicro.driver.api.Producer;
+import services.openmicro.driver.api.TestMode;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -28,10 +28,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
-import static net.openhft.chronicle.wire.WireType.JSON;
-
 @UsedViaReflection
-public class ChronicleDriver extends SelfDescribingMarshallable implements Driver {
+public class ChronicleQueueDriver extends SelfDescribingMarshallable implements Driver {
     // overlap is 1/4 of the total ring buffer size
     static final double BUFFER_TO_OVERLAP_RATIO = 1.0 / 4.0;
     static final int CACHE_LINE_SIZE = 64;
@@ -39,16 +37,12 @@ public class ChronicleDriver extends SelfDescribingMarshallable implements Drive
 
     ChronicleEvent event;
     String path;
-    EventHandler service;
     BufferMode bufferMode = BufferMode.None;
     @Comment("in MB")
     long bufferCapacity = 128;
     String bufferPath = "/dev/shm";
     transient ExecutorService executor = Executors.newCachedThreadPool(
             new AffinityThreadFactory("microservice"));
-    transient SingleChronicleQueue queue1, queue2;
-    transient ChronicleEventHandler eventHandler1, eventHandler2;
-    transient MethodReader reader1;
     volatile boolean running = true;
 
     @UsedViaReflection
@@ -63,26 +57,16 @@ public class ChronicleDriver extends SelfDescribingMarshallable implements Drive
     }
 
     @Override
-    public void init() {
+    public void init(TestMode throughput) {
         final String path = System.getProperty("path", this.path);
         System.out.println("path: " + path);
-        queue2 = createQueue("two", path);
-        eventHandler2 = queue2.acquireAppender()
-                .methodWriter(ChronicleEventHandler.class);
-
-        service = new EventMicroservice(eventHandler2);
-
-        queue1 = createQueue("one", path);
-        eventHandler1 = queue1.acquireAppender().methodWriter(ChronicleEventHandler.class);
-        reader1 = queue1.createTailer().methodReader(service);
-        System.out.println("Event size in JSON: " + JSON.asString(event));
     }
 
     private SingleChronicleQueue createQueue(String name, String path) {
         final File path2 = new File(path, name);
         IOTools.deleteDirWithFiles(path2);
         return ChronicleQueue.singleBuilder(path2)
-                .blockSize(OS.isSparseFileSupported() ? 512L << 30 : 64L << 20)
+                .blockSize(OS.isSparseFileSupported() ? 64L << 30 : 64L << 20)
                 .storeFileListener(StoreFileListener.NO_OP)
                 .readBufferMode(bufferMode)
                 .writeBufferMode(bufferMode)
@@ -101,57 +85,83 @@ public class ChronicleDriver extends SelfDescribingMarshallable implements Drive
 
     @Override
     public void start() {
-        executor.submit(this::microserviceRunner);
-    }
-
-    private void microserviceRunner() {
-        try {
-            Pauser pauser = Pauser.busy();
-            while (running) {
-                if (reader1.readOne())
-                    pauser.reset();
-                else
-                    pauser.pause();
-            }
-            Closeable.closeQuietly(queue1);
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
     }
 
     @Override
     public Producer createProducer(Consumer<Event> eventConsumer) {
-        final ChronicleEventHandler chronicleEventHandler = eventConsumer::accept;
-        final MethodReader reader2 = queue2.createTailer().methodReader(chronicleEventHandler);
-        executor.submit(() -> readReplies(reader2));
-
-        // send the first message
-        return s -> {
-            event.sendingTimeNS(s);
-            event.transactTimeNS(0L);
-            eventHandler1.event(event);
-        };
-    }
-
-    private void readReplies(MethodReader reader2) {
-        try {
-            Pauser pauser = Pauser.busy();
-            while (running) {
-                if (reader2.readOne())
-                    pauser.reset();
-                else
-                    pauser.pause();
-            }
-
-            Closeable.closeQuietly(queue2);
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
+        return new ChronicleQueueProducer(eventConsumer);
     }
 
     @Override
     public void close() {
         Driver.super.close();
         running = false;
+    }
+
+    class ChronicleQueueProducer implements Producer {
+
+        private final MethodReader reader1;
+        private final ChronicleQueue queue1;
+        private final ChronicleQueue queue2;
+        private final ChronicleEventHandler eventHandler1;
+        private final MethodReader reader2;
+
+        public ChronicleQueueProducer(Consumer<Event> eventConsumer) {
+            String s = Long.toString(System.nanoTime(), 36);
+            final ChronicleEventHandler chronicleEventHandler = eventConsumer::accept;
+
+            queue2 = createQueue(s + ".two", path);
+            ChronicleEventHandler eventHandler2 = queue2.acquireAppender()
+                    .methodWriter(ChronicleEventHandler.class);
+
+            EventMicroservice service = new EventMicroservice(eventHandler2);
+
+            queue1 = createQueue(s + ".one", path);
+            eventHandler1 = queue1.acquireAppender().methodWriter(ChronicleEventHandler.class);
+            reader1 = queue1.createTailer().methodReader(service);
+
+            reader2 = queue2.createTailer().methodReader(chronicleEventHandler);
+            executor.submit(this::microserviceRunner);
+            executor.submit(this::readReplies);
+        }
+
+        @Override
+        public void publishEvent(long startTimeNS) {
+            if (!running)
+                throw new IllegalStateException();
+            event.sendingTimeNS(startTimeNS);
+            event.transactTimeNS(0L);
+            eventHandler1.event(event);
+        }
+
+        private void microserviceRunner() {
+            try {
+                Pauser pauser = Pauser.busy();
+                while (running) {
+                    if (reader1.readOne())
+                        pauser.reset();
+                    else
+                        pauser.pause();
+                }
+                Closeable.closeQuietly(queue1, queue2);
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
+        }
+
+        private void readReplies() {
+            try {
+                Pauser pauser = Pauser.busy();
+                while (running) {
+                    if (reader2.readOne())
+                        pauser.reset();
+                    else
+                        pauser.pause();
+                }
+
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
+        }
     }
 }

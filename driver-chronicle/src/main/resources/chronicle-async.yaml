@@ -1,4 +1,4 @@
-!services.openmicro.driver.chronicle.ChronicleDriver {
+!services.openmicro.driver.chronicle.ChronicleQueueDriver {
   path: .,
   bufferMode: Asynchronous,
   event: !services.openmicro.driver.chronicle.ChronicleEvent {

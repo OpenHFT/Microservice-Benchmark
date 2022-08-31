@@ -2,14 +2,14 @@ package services.openmicro.driver.api;
 
 import java.util.function.Consumer;
 
-public interface Driver {
+public interface Driver extends AutoCloseable {
 
     Producer createProducer(Consumer<Event> event);
 
     /**
      * Initialise the driver
      */
-    default void init() {
+    default void init(TestMode testMode) {
     }
 
     /**
@@ -26,5 +26,9 @@ public interface Driver {
 
     default int warmup() {
         return 500_000;
+    }
+
+    default int window() {
+        return 1000;
     }
 }

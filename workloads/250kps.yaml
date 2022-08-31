@@ -1,3 +1,2 @@
-throughput: 250_000
-# Kafka halts after 11 minutes
-duration: PT10M
+throughputs: [ 25_000, 50_000, 75_000, 100_000, 125_000, 150_000, 175_000, 200_000, 225_000, 250_000 ]
+duration: PT5M

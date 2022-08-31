@@ -18,11 +18,7 @@
  */
 package services.openmicro.driver.kafka;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import net.openhft.chronicle.bytes.Bytes;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DeleteTopicsResult;
@@ -38,10 +34,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.LoggerFactory;
-import services.openmicro.driver.api.Driver;
-import services.openmicro.driver.api.Event;
-import services.openmicro.driver.api.EventHandler;
-import services.openmicro.driver.api.Producer;
+import services.openmicro.driver.api.*;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -52,16 +45,11 @@ import java.util.stream.IntStream;
 
 public class KafkaBenchmarkDriver implements Driver {
 
-    static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-    static final ObjectMapper jsonMapper = new ObjectMapper(new JsonFactory());
-
     private int warmup;
     private short replicationFactor;
     private boolean reset;
     private Map<String, String> commonConfig, topicConfig, producerConfig, consumerConfig;
-    private KafkaEvent event;
+    private ChronicleEvent event;
     private int producers = 1, partitions = 1, consumers = 1;
 
     private EventMicroservice microservice;
@@ -69,17 +57,21 @@ public class KafkaBenchmarkDriver implements Driver {
     private transient List<Closeable> consumerList = Collections.synchronizedList(new ArrayList<>());
     private transient AdminClient admin;
 
-    static KafkaEvent bytesToEvent(byte[] value) throws IOException {
-        return jsonMapper.readValue(value, KafkaEvent.class);
+    static void bytesToEvent(byte[] value, ChronicleEvent event) {
+        event.readMarshallable(Bytes.wrapForRead(value));
     }
 
-    public static byte[] eventToBytes(KafkaEvent event) throws JsonProcessingException {
-        return jsonMapper.writeValueAsBytes(event);
+    public static void eventToBytes(Bytes bytes, ChronicleEvent event) {
+        bytes.clear();
+        event.writeMarshallable(bytes);
     }
 
     @Override
-    public void init() {
-        Driver.super.init();
+    public void init(TestMode testMode) {
+        Driver.super.init(testMode);
+        //  is the number of producers controlled by the test
+        if (testMode == TestMode.throughput)
+            producers = partitions = consumers = 1;
 
         Properties commonProperties = new Properties();
         commonProperties.putAll(commonConfig);
@@ -113,7 +105,7 @@ public class KafkaBenchmarkDriver implements Driver {
     @Override
     public Producer createProducer(Consumer<Event> eventConsumer) {
         try {
-            String id = Long.toString(System.currentTimeMillis(), 36);
+            String id = Long.toString(System.nanoTime(), 36);
             final String one = "one" + id;
             final String two = "two" + id;
             createTopics(one, two, partitions);
@@ -127,11 +119,7 @@ public class KafkaBenchmarkDriver implements Driver {
                 this.microservice = new EventMicroservice(producer2);
                 createConsumerFor(one, this.microservice);
 
-                createConsumerFor(two, e -> {
-                    synchronized (eventConsumer) {
-                        eventConsumer.accept(e);
-                    }
-                });
+                createConsumerFor(two, eventConsumer::accept);
             }
 
             return startTimeNS -> {
@@ -145,7 +133,7 @@ public class KafkaBenchmarkDriver implements Driver {
         }
     }
 
-    private void createConsumerFor(String topic, EventHandler<KafkaEvent> microservice) {
+    private void createConsumerFor(String topic, EventHandler<ChronicleEvent> microservice) {
         Map<String, String> config = new HashMap<>(consumerConfig);
         config.put(ConsumerConfig.GROUP_ID_CONFIG, topic);
         KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>((Map) config);
@@ -157,7 +145,7 @@ public class KafkaBenchmarkDriver implements Driver {
     private KafkaBenchmarkProducer createProducerFor(String topic) {
         KafkaProducer<String, byte[]>[] kafkaProducers =
                 IntStream.range(0, producers)
-                        .mapToObj(i -> new KafkaProducer<>((Map<String, Object>)(Map) producerConfig))
+                        .mapToObj(i -> new KafkaProducer<>((Map<String, Object>) (Map) producerConfig))
                         .toArray(i -> (KafkaProducer<String, byte[]>[]) new KafkaProducer[i]);
         final KafkaBenchmarkProducer producer = new KafkaBenchmarkProducer(kafkaProducers, topic, partitions);
         producerList.add(producer);
@@ -200,11 +188,17 @@ public class KafkaBenchmarkDriver implements Driver {
                 LoggerFactory.getLogger(getClass()).error("Error closing " + consumer, e);
             }
         }
-        admin.close();
+        if (admin != null)
+            admin.close();
     }
 
     @Override
     public int warmup() {
         return warmup;
+    }
+
+    @Override
+    public int window() {
+        return 1_000_000;
     }
 }

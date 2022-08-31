@@ -18,6 +18,7 @@
  */
 package services.openmicro.driver.kafka;
 
+import net.openhft.chronicle.bytes.Bytes;
 import net.openhft.chronicle.core.io.Closeable;
 import net.openhft.chronicle.core.io.IORuntimeException;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -25,12 +26,13 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import services.openmicro.driver.api.EventHandler;
 
 
-public class KafkaBenchmarkProducer implements EventHandler<KafkaEvent> {
+public class KafkaBenchmarkProducer implements EventHandler<ChronicleEvent> {
 
     private final KafkaProducer<String, byte[]>[] producers;
     private final String topic;
     private final int partitions;
     private int producer, partition;
+    private Bytes bytes = Bytes.allocateElasticOnHeap();
 
     public KafkaBenchmarkProducer(KafkaProducer<String, byte[]>[] producers, String topic, int partitions) {
         this.producers = producers;
@@ -39,9 +41,10 @@ public class KafkaBenchmarkProducer implements EventHandler<KafkaEvent> {
     }
 
     @Override
-    public void event(KafkaEvent event) {
+    public void event(ChronicleEvent event) {
         try {
-            byte[] payload = KafkaBenchmarkDriver.eventToBytes(event);
+            KafkaBenchmarkDriver.eventToBytes(bytes, event);
+            byte[] payload = bytes.toByteArray();
             final int producer, partition;
             synchronized (this) {
                 producer = this.producer;

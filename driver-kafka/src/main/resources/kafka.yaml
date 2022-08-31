@@ -11,7 +11,7 @@
   producerConfig: {
     acks: 0,
     linger.ms: 1,
-    batch.size: 10485760,
+    batch.size: 1048576,
     bootstrap.servers: "http://localhost:9092",
   },
   consumerConfig: {
@@ -20,7 +20,7 @@
     enable.auto.commit: true,
     max.partition.fetch.bytes: 10485760,
   },
-  event: !services.openmicro.driver.kafka.KafkaEvent {
+  event: !services.openmicro.driver.kafka.ChronicleEvent {
     dateTime1: 2022-01-06T11:00,
     dateTime2: 2022-01-06T12:00,
     dateTime3: 2022-01-07T11:11:11.111222333,
@@ -42,7 +42,7 @@
     value7: 1e12,
     value8: 8888.8888
   },
-  producers: 1,
+  producers: 4,
   partitions: 4,
-  consumers: 8
+  consumers: 4
 }
